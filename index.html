@@ -1,0 +1,1450 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Suite de Calculadoras — Base Estable v25</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f7fb;--card:#fff;--ink:#222;--muted:#6b7280;
+  --brand:#ff7aa2;--brand2:#7aa2ff;--ok:#22c55e;--danger:#ef4444;
+  --radius:16px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+  font-family:Poppins,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif;line-height:1.35}
+.app{max-width:1200px;margin:auto;padding:18px}
+header{background:linear-gradient(120deg,var(--brand),var(--brand2));color:#fff;padding:18px;border-radius:var(--radius);
+  box-shadow:0 10px 25px rgba(0,0,0,.10);display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:space-between}
+header h1{margin:0;font-size:22px}
+nav{display:flex;gap:8px;flex-wrap:wrap}
+nav button{appearance:none;border:none;background:#ffffffee;color:#111;padding:10px 14px;border-radius:999px;font-weight:600;cursor:pointer;
+  box-shadow:0 2px 6px rgba(0,0,0,.10);transition:.2s}
+nav button.active{background:#111;color:#fff}
+.view{display:none;margin-top:16px}
+.view.active{display:block}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+.card{grid-column:span 12;background:var(--card);border-radius:var(--radius);box-shadow:0 8px 20px rgba(0,0,0,.06);padding:16px;overflow:hidden}
+@media(min-width:900px){.md-6{grid-column:span 6}.md-8{grid-column:span 8}.md-4{grid-column:span 4}.md-12{grid-column:span 12}.md-3{grid-column:span 3}}
+label{font-size:12px;color:var(--muted);display:block;margin:6px 0 4px}
+input[type="number"],input[type="text"],select{width:100%;padding:12px;border-radius:12px;border:1px solid #e5e7eb;background:#fff;font-size:14px}
+input:focus,select:focus{outline:none;box-shadow:0 0 0 3px rgba(255,122,162,.25);border-color:#ffd1e1}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start}
+.btn{appearance:none;border:none;border-radius:12px;padding:10px 14px;font-weight:600;cursor:pointer}
+.btn.reset{background:var(--danger);color:#fff}
+.btn.ok{background:var(--ok);color:#fff}
+.btn.neutral{background:#111;color:#fff}
+.muted{color:var(--muted)}
+.result{font-weight:600}
+.pill{display:inline-flex;align-items:center;gap:6px;background:#f3f4f6;border-radius:999px;padding:6px 10px;font-size:12px}
+.sep{height:1px;background:#eee;margin:12px 0}
+.tot{font-size:18px;font-weight:700}
+.footer{margin:28px 0 8px;color:var(--muted);text-align:center}
+.copy-btn{font-size:12px;border:none;background:#f3f4f6;border-radius:8px;padding:6px 8px;cursor:pointer}
+.ud{background:#ffe8ee !important;font-weight:600}
+.chk-label{font-weight:700}
+#bloques{display:grid;grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap:14px;}
+.color-preview{width:14px;height:14px;border-radius:4px;border:1px solid #e5e7eb;display:inline-block;vertical-align:middle;margin-right:6px}
+/* Dark mode */
+body.dark{background:#0f1115;color:#e5e7eb}
+body.dark header{box-shadow:none}
+body.dark .card{background:#151924;box-shadow:none;border:1px solid #23283a}
+body.dark .pill,.dark .chip{background:#1b2030;border-color:#2a3147;color:#e5e7eb}
+body.dark input[type="number"],body.dark input[type="text"],body.dark select{background:#0f1115;color:#e5e7eb;border-color:#2a3147}
+body.dark .copy-btn{background:#1b2030;color:#e5e7eb}
+body.dark nav button{background:#1b2030;color:#e5e7eb}
+body.dark nav button.active{background:#e5e7eb;color:#0f1115}
+body.dark .ud{background:#5e3c49 !important;color:#fff}
+.center-actions{display:flex;gap:12px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+@media print{
+  header, nav, .copy-btn, .btn.reset, .btn.ok, .btn.neutral, .footer, .center-actions{display:none !important}
+  body{background:#fff}
+  .view{display:none !important}
+  .view.active{display:block !important}
+  .card{box-shadow:none !important;border:1px solid #ddd}
+}
+</style>
+
+  <!-- PWA + iOS support -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#ff7aa2">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <!-- iOS input zoom prevention -->
+  <style>
+    /* Avoid iOS input zoom by ensuring font-size >= 16px */
+    input, select, textarea { font-size: 16px !important; }
+    /* iOS 100vh fix for Safari */
+    :root { --vh: 100vh; }
+    @supports (-webkit-touch-callout: none) {
+      :root { --vh: -webkit-fill-available; }
+      html, body { min-height: 100%; height: -webkit-fill-available; }
+    }
+  </style>
+
+</head>
+<body>
+<div class="app">
+<header>
+  <h1>Suite de Calculadoras</h1>
+  <nav id="nav">
+    <button data-view="divisas" class="active">Divisas BCV / Paralelo</button>
+    <button data-view="vinil">Costo de Vinil</button>
+    <button data-view="basica">Calculadora Básica</button>
+    <button data-view="sublimacion">Costos Sublimación</button>
+    <button data-view="etiquetas">Costos de Etiquetas</button>
+    <button data-view="empaques">Costos de Empaques</button>
+    <button data-view="envios">Costos de Envíos</button>
+    <button data-view="resumen">Resumen General</button>
+  </nav>
+  <div style="display:flex;gap:8px;align-items:center">
+    <label style="display:flex;gap:6px;align-items:center;font-size:12px;background:#ffffff33;padding:6px 10px;border-radius:999px">
+      <input type="checkbox" id="dark_toggle"> Modo oscuro
+    </label>
+  </div>
+</header>
+
+<!-- DIVISAS -->
+<section id="view-divisas" class="view active">
+  <div class="grid">
+    <div class="card md-6">
+      <h3>Tasas</h3>
+      <div class="row">
+        <div style="flex:1;min-width:220px">
+          <label>Precio BCV (Bs por $)</label>
+          <div class="row" style="align-items:center;gap:6px">
+            <span class="pill">Bs</span>
+            <input type="number" id="tasa_bcv" step="0.0001" min="0">
+          </div>
+        </div>
+        <div style="flex:1;min-width:220px">
+          <label>Precio Paralelo (Bs por $)</label>
+          <div class="row" style="align-items:center;gap:6px">
+            <span class="pill">Bs</span>
+            <input type="number" id="tasa_paralelo" step="0.0001" min="0">
+          </div>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <div class="row"><div class="pill">Equivalente en Paralelo: <span id="equiv_paralelo">—</span></div></div>
+    </div>
+
+    <div class="card md-6">
+      <h3>Conversión rápida</h3>
+      <div class="row">
+        <div style="flex:1;min-width:220px">
+          <label>Monto en $</label>
+          <div class="row" style="align-items:center;gap:6px">
+            <span class="pill">$</span>
+            <input type="number" id="monto_usd" step="0.01" min="0">
+          </div>
+        </div>
+        <div style="flex:1;min-width:220px">
+          <label>Monto en Bs (BCV)</label>
+          <div class="row" style="align-items:center;gap:6px">
+            <span class="pill">Bs</span>
+            <input type="number" id="monto_bs_bcv" step="0.01" min="0">
+          </div>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap">
+        <div class="pill">En Bs (BCV): <span id="bs_bcv">—</span></div>
+        <div class="pill">En Bs (Paralelo): <span id="bs_paralelo">—</span></div>
+        <div class="pill">En $ desde Bs(BCV): <span id="usd_desde_bs">—</span></div>
+        <button class="copy-btn" id="btn_copy_div">Copiar resultados</button>
+      </div>
+
+      <div class="sep"></div>
+      <div class="card" style="padding:14px;background:#fafafa;border:1px solid #eee">
+        <h4 style="margin:0 0 8px">Conversión rápida — modo paralelo / BCV</h4>
+        <div class="row" style="gap:12px;flex-wrap:wrap">
+          <div style="flex:1;min-width:260px">
+            <label>Valor en dólar Paralelo:</label>
+            <div class="row" style="align-items:center;gap:6px">
+              <span class="pill">$</span>
+              <input type="number" id="usd_paralelo_input" placeholder="Ingrese monto en Paralelo" step="0.01" min="0">
+            </div>
+            <div style="margin-top:8px" class="muted">Equivalente en BCV: <span id="equiv_en_bcv_ext">-</span></div>
+          </div>
+
+          <div style="flex:1;min-width:260px">
+            <label>Valor en dólar BCV:</label>
+            <div class="row" style="align-items:center;gap:6px">
+              <span class="pill">$</span>
+              <input type="number" id="usd_bcv_input" placeholder="Ingrese monto en BCV" step="0.01" min="0">
+            </div>
+            <div style="margin-top:8px" class="muted">Equivalente en Paralelo: <span id="equiv_en_paralelo_ext">-</span></div>
+            <div style="margin-top:6px" class="muted"><strong>Valor en Bs tasa BCV:</strong> <span id="valor_bs_tasa_bcv_ext">-</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px" class="row">
+        <button class="btn reset" id="btn_reset_div">Reset</button>
+      </div>
+    </div>
+
+    <div class="card md-12">
+      <h3>Detalle adicional</h3>
+      <div class="row" style="gap:14px;flex-wrap:wrap">
+        <div class="pill">Diferencia (Paralelo - BCV) en Bs por $: <span id="diff_bs">—</span></div>
+        <div class="pill">Brecha %: <span id="gap_pct">—</span></div>
+      
+  <div class="center-actions" style="margin-top:10px">
+    <button class="copy-btn" id="btn_copy_resumen">Copiar resumen</button>
+    <button class="copy-btn" id="btn_print_resumen">Exportar a PDF / Imprimir</button>
+  </div>
+</div>
+  </div>
+</section>
+
+<!-- VINIL -->
+<section id="view-vinil" class="view" active>
+  <div class="grid">
+    <div class="card md-12" style="background:#ffe7ef">
+      <h3 style="margin:0 0 2px">Calculadora de Costo de Vinil</h3>
+      <div class="muted">Precio basado en vinil de ancho estándar (editable) × 100 cm de largo</div>
+      <div style="margin-top:10px;max-width:420px">
+        <label>Ancho estándar del vinil (cm)</label>
+        <input id="ancho_estandar" type="number" value="51" min="1"/>
+      </div>
+    </div>
+
+    <div class="card md-12">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div class="row" style="gap:8px;align-items:center">
+          <button class="btn ok" id="btn_add_color">Agregar color</button>
+          <label style="display:inline-flex;align-items:center;gap:8px;margin:0">
+            <input id="margenError" type="checkbox"/> Margen de Error 20%
+          </label>
+        </div>
+        <button class="btn reset" id="btn_reset_vinil">Reset</button>
+      </div>
+      <div class="sep"></div>
+      <div id="bloques" class="grid"></div>
+      <div class="sep"></div>
+      <div class="tot" id="totalFinal">Costo total: $0.00</div>
+      <div class="footer">Calculadora creada por @subli_mada
+  <div class="center-actions" style="margin-top:10px">
+    <button class="copy-btn" id="btn_copy_resumen">Copiar resumen</button>
+    <button class="copy-btn" id="btn_print_resumen">Exportar a PDF / Imprimir</button>
+  </div>
+</div>
+  </div>
+</section>
+
+<!-- CALCULADORA BÁSICA -->
+<section id="view-basica" class="view">
+  <div class="grid">
+    <div class="card md-4">
+      <h3>Calculadora Básica</h3>
+      <input id="calc-display" type="text" placeholder="0" readonly />
+      <div class="sep"></div>
+      <div class="grid" style="grid-template-columns:repeat(4,1fr);gap:8px">
+        <button class="btn neutral" data-k="7">7</button>
+        <button class="btn neutral" data-k="8">8</button>
+        <button class="btn neutral" data-k="9">9</button>
+        <button class="btn ok" data-k="/">/</button>
+
+        <button class="btn neutral" data-k="4">4</button>
+        <button class="btn neutral" data-k="5">5</button>
+        <button class="btn neutral" data-k="6">6</button>
+        <button class="btn ok" data-k="*">×</button>
+
+        <button class="btn neutral" data-k="1">1</button>
+        <button class="btn neutral" data-k="2">2</button>
+        <button class="btn neutral" data-k="3">3</button>
+        <button class="btn ok" data-k="-">−</button>
+
+        <button class="btn neutral" data-k="0">0</button>
+        <button class="btn neutral" data-k=".">.</button>
+        <button class="btn reset" id="calc-clear">C</button>
+        <button class="btn ok" data-k="+">+</button>
+        <button class="btn ok" id="calc-eq">=</button>
+      </div>
+      <div class="muted" style="margin-top:8px">Usa el teclado: Enter, Backspace.</div>
+    </div>
+    <div class="card md-8">
+      <h3>Notas</h3>
+      <p class="muted">Calculadora integrada para operaciones rápidas mientras trabajas con las otras vistas.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SUBLIMACIÓN -->
+<section id="view-sublimacion" class="view">
+  <div class="grid">
+    <div class="card md-12">
+      <h3 style="margin:0 0 6px">Cálculo de costos — Sublimación</h3>
+      <div class="sep"></div>
+      <div class="grid">
+        <div class="card md-6" style="background:#fff">
+          <h4 style="margin:0 0 10px">Costos directos</h4>
+          <div class="row" style="gap:8px;align-items:center;margin-top:6px">
+            <label class="chk-label" style="display:flex;align-items:center;gap:8px">
+              <input type="checkbox" id="d_prod_on" checked> 
+              <span id="d_prod_label">
+                <select id="d_prod_select">
+                  <option>Taza</option><option>Taza Magica</option><option>Jarra Cervecera</option><option>Termo</option><option>Camiseta</option><option>Llavero</option><option>Mousepad</option><option>Rompecabezas</option><option>Boligrafo</option><option>Otros</option>
+                </select>
+              </span>
+            </label>
+          </div>
+          <div class="row">
+            <div style="flex:1;min-width:110px"><label>Cant.</label><input type="number" id="d_prod_cant" value="36" step="1" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Precio ($)</label><input type="number" id="d_prod_precio" value="90" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Costo Ud.</label><input type="text" id="d_prod_ud" class="ud" readonly></div>
+          </div>
+          <div class="sep"></div>
+          <div class="row" style="gap:8px;align-items:center"><label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="d_papel_on" checked> Papel</label></div>
+          <div class="row">
+            <div style="flex:1;min-width:110px"><label>Cant.</label><input type="number" id="d_papel_cant" value="100" step="1" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Precio ($)</label><input type="number" id="d_papel_precio" value="10" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Costo Ud.</label><input type="text" id="d_papel_ud" class="ud" readonly></div>
+          </div>
+          <div class="row" style="gap:8px;align-items:center;margin-top:10px"><label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="d_tinta_on" checked> Tinta de sublimación</label></div>
+          <div class="row">
+            <div style="flex:1;min-width:110px"><label>Cant.</label><input type="number" id="d_tinta_cant" value="300" step="1" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Precio ($)</label><input type="number" id="d_tinta_precio" value="40" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Costo Ud.</label><input type="text" id="d_tinta_ud" class="ud" readonly></div>
+          </div>
+          <div class="row" style="gap:8px;align-items:center;margin-top:10px"><label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="d_cinta_on" checked> Cinta térmica</label></div>
+          <div class="row">
+            <div style="flex:1;min-width:110px"><label>Cant.</label><input type="number" id="d_cinta_cant" value="100" step="1" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Precio ($)</label><input type="number" id="d_cinta_precio" value="3" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Costo Ud.</label><input type="text" id="d_cinta_ud" class="ud" readonly></div>
+          </div>
+          <div class="row" style="gap:8px;align-items:center;margin-top:10px"><label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="d_empaque_on" checked> Empaque</label></div>
+          <div class="row">
+            <div style="flex:1;min-width:110px"><label>Cant.</label><input type="number" id="d_empaque_cant" value="50" step="1" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Precio ($)</label><input type="number" id="d_empaque_precio" value="5" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Costo Ud.</label><input type="text" id="d_empaque_ud" class="ud" readonly></div>
+          </div>
+        </div>
+
+        <div class="card md-6" style="background:#fff">
+          <h4 style="margin:0 0 10px">Depreciación de equipos <span class="muted">(base 2 años)</span></h4>
+          <div class="row" style="gap:8px;align-items:center"><label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="e_impresora_on" checked> Impresora</label></div>
+          <div class="row">
+            <div style="flex:1;min-width:120px"><label>Precio ($)</label><input type="number" id="e_impresora_precio" value="240" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:120px"><label>costo x Mes</label><input type="text" id="e_impresora_mes" class="ud" readonly></div>
+            <div style="flex:1;min-width:120px"><label>Costo Ud.</label><input type="text" id="e_impresora_ud" class="ud" readonly></div>
+          </div>
+          <div class="row" style="gap:8px;align-items:center;margin-top:10px"><label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="e_plancha_on" checked> Plancha térmica</label></div>
+          <div class="row">
+            <div style="flex:1;min-width:120px"><label>Precio ($)</label><input type="number" id="e_plancha_precio" value="400" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:120px"><label>costo x Mes</label><input type="text" id="e_plancha_mes" class="ud" readonly></div>
+            <div style="flex:1;min-width:120px"><label>Costo Ud.</label><input type="text" id="e_plancha_ud" class="ud" readonly></div>
+          </div>
+          <div class="row" style="gap:8px;align-items:center;margin-top:10px"><label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="e_pc_on" checked> Computadora</label></div>
+          <div class="row">
+            <div style="flex:1;min-width:120px"><label>Precio ($)</label><input type="number" id="e_pc_precio" value="350" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:120px"><label>costo x Mes</label><input type="text" id="e_pc_mes" class="ud" readonly></div>
+            <div style="flex:1;min-width:120px"><label>Costo Ud.</label><input type="text" id="e_pc_ud" class="ud" readonly></div>
+          </div>
+        </div>
+
+        <div class="card md-12">
+          <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap">
+            <div class="pill">Total directos: <span id="sub_total_directos" class="result">$0.00</span></div>
+            <div class="pill">Total depreciación: <span id="sub_total_depr" class="result">$0.00</span></div>
+            <div class="pill">Total sin G/I: <span id="sub_subtotal_no_gi" class="result">$0.00</span></div>
+          </div>
+          <div class="sep"></div>
+          <div class="row">
+            <div style="flex:1;min-width:160px"><label><input type="checkbox" id="chk_ganancia" checked> Ganancia (%)</label><input type="number" id="sub_ganancia" value="40" step="1" min="0"></div>
+            <div style="flex:1;min-width:160px"><label><input type="checkbox" id="chk_impuestos" checked> Impuestos (%)</label><input type="number" id="sub_impuestos" value="16" step="1" min="0"></div>
+          </div>
+          <div class="sep"></div>
+          <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap">
+            <div class="pill">Subtotal: <span id="sub_subtotal" class="result">$0.00</span></div>
+            <div class="pill">+ Ganancia: <span id="sub_ganancia_val" class="result">$0.00</span></div>
+            <div class="pill">+ Impuestos: <span id="sub_impuestos_val" class="result">$0.00</span></div>
+          </div>
+          <div class="sep"></div>
+          <div class="tot">Precio de Venta: <span id="sub_total" class="result">$0.00</span></div>
+          <div class="center-actions">
+            <button class="copy-btn" id="btn_print_sub">Exportar a PDF / Imprimir</button>
+            <button class="copy-btn" id="btn_copy_sub">Copiar</button>
+            <button class="btn reset" id="btn_reset_sub">Reset</button>
+          </div>
+        </div>
+      
+  <div class="center-actions" style="margin-top:10px">
+    <button class="copy-btn" id="btn_copy_resumen">Copiar resumen</button>
+    <button class="copy-btn" id="btn_print_resumen">Exportar a PDF / Imprimir</button>
+  </div>
+</div>
+  </div>
+</section>
+
+<!-- ETIQUETAS -->
+<section id="view-etiquetas" class="view">
+  <div class="grid">
+    <div class="card md-12">
+      <h3 style="margin:0 0 6px">Cálculo de costos — Etiquetas</h3>
+      <div class="sep"></div>
+      <div class="grid">
+        <div class="card md-6" style="background:#fff">
+          <h4 style="margin:0 0 10px">Costos directos</h4>
+          <div class="row" style="gap:8px;align-items:center;margin-top:6px">
+            <label class="chk-label" style="display:flex;align-items:center;gap:8px">
+              <input type="checkbox" id="eti_d_prod_on" checked>
+              <span id="eti_d_prod_label">
+                <select id="eti_d_prod_select">
+                  <option>Vinil imprimible</option>
+                  <option>Papel fotográfico adhesivo</option>
+                  <option>Etiqueta PVC</option>
+                  <option>Etiqueta BOPP</option>
+                  <option>Holográfico</option>
+                  <option>Transparente</option>
+                  <option>Kraft</option>
+                  <option>Otros</option>
+                </select>
+              </span>
+            </label>
+          </div>
+          <div class="row">
+            <div style="flex:1;min-width:110px"><label>Cant.</label><input type="number" id="eti_d_prod_cant" value="20" step="1" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Precio ($)</label><input type="number" id="eti_d_prod_precio" value="13" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Costo Ud.</label><input type="text" id="eti_d_prod_ud" class="ud" readonly></div>
+          </div>
+          <div class="sep"></div>
+          <div class="row" style="gap:8px;align-items:center"><label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="eti_d_tinta_on" checked> Tinta</label></div>
+          <div class="row">
+            <div style="flex:1;min-width:110px"><label>Cant.</label><input type="number" id="eti_d_tinta_cant" value="1000" step="1" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Precio ($)</label><input type="number" id="eti_d_tinta_precio" value="30" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Costo Ud.</label><input type="text" id="eti_d_tinta_ud" class="ud" readonly></div>
+          </div>
+          <div class="row" style="gap:8px;align-items:center;margin-top:10px"><label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="eti_d_laminado_on"> Laminado en frío</label></div>
+          <div class="row">
+            <div style="flex:1;min-width:110px"><label>Cant.</label><input type="number" id="eti_d_laminado_cant" value="20" step="1" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Precio ($)</label><input type="number" id="eti_d_laminado_precio" value="10" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Costo Ud.</label><input type="text" id="eti_d_laminado_ud" class="ud" readonly></div>
+          </div>
+        </div>
+
+        <div class="card md-6" style="background:#fff">
+          <h4 style="margin:0 0 10px">Depreciación</h4>
+          <div class="row" style="gap:8px;align-items:center"><label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="eti_e_cuchilla_on" checked> Cuchilla de corte</label></div>
+          <div class="row">
+            <div style="flex:1;min-width:120px"><label>Precio ($)</label><input type="number" id="eti_e_cuchilla_precio" value="25" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:120px"><label>Vida útil (cortes)</label><input type="number" id="eti_e_cuchilla_vida" value="100" step="1" min="1"></div>
+            <div style="flex:1;min-width:120px"><label>Costo por corte</label><input type="text" id="eti_e_cuchilla_ud" class="ud" readonly></div>
+          </div>
+          <div class="row" style="gap:8px;align-items:center;margin-top:10px"><label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="eti_e_plotter_on" checked> Plotter de corte</label></div>
+          <div class="row">
+            <div style="flex:1;min-width:120px"><label>Precio ($)</label><input type="number" id="eti_e_plotter_precio" value="400" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:120px"><label>costo x Mes</label><input type="text" id="eti_e_plotter_mes" class="ud" readonly></div>
+            <div style="flex:1;min-width:120px"><label>Costo Ud.</label><input type="text" id="eti_e_plotter_ud" class="ud" readonly></div>
+          </div>
+          <div class="row" style="gap:8px;align-items:center;margin-top:10px"><label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="eti_e_impresora_on" checked> Impresora</label></div>
+          <div class="row">
+            <div style="flex:1;min-width:120px"><label>Precio ($)</label><input type="number" id="eti_e_impresora_precio" value="240" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:120px"><label>costo x Mes</label><input type="text" id="eti_e_impresora_mes" class="ud" readonly></div>
+            <div style="flex:1;min-width:120px"><label>Costo Ud.</label><input type="text" id="eti_e_impresora_ud" class="ud" readonly></div>
+          </div>
+        </div>
+
+        <div class="card md-12">
+          <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap">
+            <div class="pill">Total directos: <span id="eti_total_directos" class="result">$0.00</span></div>
+            <div class="pill">Total depreciación: <span id="eti_total_depr" class="result">$0.00</span></div>
+            <div class="pill">Total sin G/I: <span id="eti_subtotal_no_gi" class="result">$0.00</span></div>
+          </div>
+          <div class="sep"></div>
+          <div class="row">
+            <div style="flex:1;min-width:160px"><label><input type="checkbox" id="eti_chk_ganancia" checked> Ganancia (%)</label><input type="number" id="eti_ganancia" value="40" step="1" min="0"></div>
+            <div style="flex:1;min-width:160px"><label><input type="checkbox" id="eti_chk_impuestos" checked> Impuestos (%)</label><input type="number" id="eti_impuestos" value="16" step="1" min="0"></div>
+          </div>
+          <div class="sep"></div>
+          <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap">
+            <div class="pill">Subtotal: <span id="eti_subtotal" class="result">$0.00</span></div>
+            <div class="pill">+ Ganancia: <span id="eti_ganancia_val" class="result">$0.00</span></div>
+            <div class="pill">+ Impuestos: <span id="eti_impuestos_val" class="result">$0.00</span></div>
+          </div>
+          <div class="sep"></div>
+          <div class="tot">Precio de Venta: <span id="eti_total" class="result">$0.00</span></div>
+          <div class="center-actions">
+            <button class="copy-btn" id="btn_print_eti">Exportar a PDF / Imprimir</button>
+            <button class="copy-btn" id="btn_copy_eti">Copiar</button>
+            <button class="btn reset" id="btn_reset_eti">Reset</button>
+          </div>
+        </div>
+      
+  <div class="center-actions" style="margin-top:10px">
+    <button class="copy-btn" id="btn_copy_resumen">Copiar resumen</button>
+    <button class="copy-btn" id="btn_print_resumen">Exportar a PDF / Imprimir</button>
+  </div>
+</div>
+  </div>
+</section>
+
+<!-- EMPAQUES -->
+<section id="view-empaques" class="view">
+  <div class="grid">
+    <div class="card md-12">
+      <h3 style="margin:0 0 6px">Cálculo de costos — Empaques</h3>
+      <div class="sep"></div>
+      <div class="grid">
+        <div class="card md-6" style="background:#fff">
+          <h4 style="margin:0 0 10px">Costos directos</h4>
+
+          <div class="row" style="gap:8px;align-items:center"><label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="emp_caja_on" checked> Caja</label></div>
+          <div class="row">
+            <div style="flex:1;min-width:110px"><label>Cant.</label><input type="number" id="emp_caja_cant" value="50" step="1" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Precio ($)</label><input type="number" id="emp_caja_precio" value="20" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Costo Ud.</label><input type="text" id="emp_caja_ud" class="ud" readonly></div>
+          </div>
+
+          <div class="row" style="gap:8px;align-items:center;margin-top:8px"><label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="emp_bolsa_on" checked> Bolsa</label></div>
+          <div class="row">
+            <div style="flex:1;min-width:110px"><label>Cant.</label><input type="number" id="emp_bolsa_cant" value="100" step="1" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Precio ($)</label><input type="number" id="emp_bolsa_precio" value="12" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Costo Ud.</label><input type="text" id="emp_bolsa_ud" class="ud" readonly></div>
+          </div>
+
+          <div class="row" style="gap:8px;align-items:center;margin-top:8px"><label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="emp_relleno_on" checked> Relleno / Protección</label></div>
+          <div class="row">
+            <div style="flex:1;min-width:110px"><label>Cant.</label><input type="number" id="emp_relleno_cant" value="1" step="1" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Precio ($)</label><input type="number" id="emp_relleno_precio" value="5" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Costo Ud.</label><input type="text" id="emp_relleno_ud" class="ud" readonly></div>
+          </div>
+
+          <div class="row" style="gap:8px;align-items:center;margin-top:8px"><label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="emp_etiqueta_on" checked> Etiqueta</label></div>
+          <div class="row">
+            <div style="flex:1;min-width:110px"><label>Cant.</label><input type="number" id="emp_etiqueta_cant" value="100" step="1" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Precio ($)</label><input type="number" id="emp_etiqueta_precio" value="8" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Costo Ud.</label><input type="text" id="emp_etiqueta_ud" class="ud" readonly></div>
+          </div>
+
+          <div class="row" style="gap:8px;align-items:center;margin-top:8px"><label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="emp_tarjeta_on"> Tarjeta de agradecimiento</label></div>
+          <div class="row">
+            <div style="flex:1;min-width:110px"><label>Cant.</label><input type="number" id="emp_tarjeta_cant" value="50" step="1" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Precio ($)</label><input type="number" id="emp_tarjeta_precio" value="6" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Costo Ud.</label><input type="text" id="emp_tarjeta_ud" class="ud" readonly></div>
+          </div>
+
+          <div class="row" style="gap:8px;align-items:center;margin-top:8px"><label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="emp_cinta_on"> Cinta adhesiva</label></div>
+          <div class="row">
+            <div style="flex:1;min-width:110px"><label>Cant.</label><input type="number" id="emp_cinta_cant" value="1" step="1" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Precio ($)</label><input type="number" id="emp_cinta_precio" value="2" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:110px"><label>Costo Ud.</label><input type="text" id="emp_cinta_ud" class="ud" readonly></div>
+          </div>
+        </div>
+
+        <div class="card md-6" style="background:#fff">
+          <h4 style="margin:0 0 10px">Depreciación <span class="muted">(opcional)</span></h4>
+          <div class="row" style="gap:8px;align-items:center"><label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="emp_impresora_on"> Impresora de etiquetas</label></div>
+          <div class="row">
+            <div style="flex:1;min-width:120px"><label>Precio ($)</label><input type="number" id="emp_impresora_precio" value="200" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:120px"><label>costo x Mes</label><input type="text" id="emp_impresora_mes" class="ud" readonly></div>
+            <div style="flex:1;min-width:120px"><label>Costo Ud.</label><input type="text" id="emp_impresora_ud" class="ud" readonly></div>
+          </div>
+        </div>
+
+        <div class="card md-12">
+          <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap">
+            <div class="pill">Total directos: <span id="emp_total_directos" class="result">$0.00</span></div>
+            <div class="pill">Total depreciación: <span id="emp_total_depr" class="result">$0.00</span></div>
+            <div class="pill">Total sin G/I: <span id="emp_subtotal_no_gi" class="result">$0.00</span></div>
+          </div>
+          <div class="sep"></div>
+          <div class="row">
+            <div style="flex:1;min-width:160px"><label><input type="checkbox" id="emp_chk_ganancia" checked> Ganancia (%)</label><input type="number" id="emp_ganancia" value="30" step="1" min="0"></div>
+            <div style="flex:1;min-width:160px"><label><input type="checkbox" id="emp_chk_impuestos" checked> Impuestos (%)</label><input type="number" id="emp_impuestos" value="16" step="1" min="0"></div>
+          </div>
+          <div class="sep"></div>
+          <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap">
+            <div class="pill">Subtotal: <span id="emp_subtotal" class="result">$0.00</span></div>
+            <div class="pill">+ Ganancia: <span id="emp_ganancia_val" class="result">$0.00</span></div>
+            <div class="pill">+ Impuestos: <span id="emp_impuestos_val" class="result">$0.00</span></div>
+          </div>
+          <div class="sep"></div>
+          <div class="tot">Precio de Venta: <span id="emp_total" class="result">$0.00</span></div>
+          <div class="center-actions">
+            <button class="copy-btn" id="btn_print_emp">Exportar a PDF / Imprimir</button>
+            <button class="copy-btn" id="btn_copy_emp">Copiar</button>
+            <button class="btn reset" id="btn_reset_emp">Reset</button>
+          </div>
+        </div>
+      
+  <div class="center-actions" style="margin-top:10px">
+    <button class="copy-btn" id="btn_copy_resumen">Copiar resumen</button>
+    <button class="copy-btn" id="btn_print_resumen">Exportar a PDF / Imprimir</button>
+  </div>
+</div>
+  </div>
+</section>
+
+
+<!-- ENVIOS -->
+<section id="view-envios" class="view">
+  <div class="grid">
+    <div class="card md-12">
+      <h3 style="margin:0 0 6px">Costos de Envíos</h3>
+      <div class="sep"></div>
+      <div class="grid">
+        <div class="card md-6" style="background:#fff">
+          <h4 style="margin:0 0 10px">Mensajería / Flete <span title=\"Costos base del traslado: tarifa fija, distancia (km) y peso (kg).\">ℹ️</span></h4>
+          <div class="row" style="gap:8px;align-items:center">
+            <label class="chk-label" style="display:flex;align-items:center;gap:8px">
+              <input type="checkbox" id="env_mensajeria_on"> Activar mensajería
+            </label>
+          </div>
+          <div class="row">
+            <div style="flex:1;min-width:120px"><label>Tipo</label>
+              <select id="env_tipo">
+                <option>Motorizado local</option>
+                <option>Mensajería urbana</option>
+                <option>Encomienda nacional</option>
+                <option>Internacional</option>
+                <option>Otro</option>
+              </select>
+            </div>
+            <div style="flex:1;min-width:120px"><label>Distancia (km)</label><input type="number" id="env_km" value="0" step="0.1" min="0"></div>
+            <div style="flex:1;min-width:120px"><label>Tarifa base</label><input type="number" id="env_base" value="0" step="0.01" min="0"></div>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <div style="flex:1;min-width:120px"><label title=\"Monto por cada kilómetro recorrido.\">Tarifa por km</label><input type="number" id="env_tarifa_km" value="0" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:120px"><label>Peso (kg)</label><input type="number" id="env_kg" value="0" step="0.1" min="0"></div>
+            <div style="flex:1;min-width:120px"><label>Tarifa por kg</label><input type="number" id="env_tarifa_kg" value="0" step="0.01" min="0"></div>
+          </div>
+        </div>
+
+        <div class="card md-6" style="background:#fff">
+          <h4 style="margin:0 0 10px">Extras</h4>
+          <div class="row" style="gap:8px;align-items:center">
+            <label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="env_embalaje_on"> Embalaje extra</label>
+            <label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="env_fragil_on"> Manejo frágil</label>
+            <label class="chk-label" style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="env_seguro_on"> Seguro (%)</label>
+          </div>
+          <div class="row">
+            <div style="flex:1;min-width:120px"><label>Costo embalaje</label><input type="number" id="env_embalaje" value="0" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:120px"><label>Costo frágil</label><input type="number" id="env_fragil" value="0" step="0.01" min="0"></div>
+            <div style="flex:1;min-width:120px"><label title=\"Porcentaje calculado sobre (mensajería + extras seleccionados).\">% Seguro</label><input type="number" id="env_seguro_pct" value="0" step="0.1" min="0"></div>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <div style="flex:1;min-width:120px"><label>Otros (monto)</label><input type="number" id="env_otros" value="0" step="0.01" min="0"></div>
+          </div>
+        </div>
+
+        <div class="card md-12">
+          <div class="row" style="gap:10px;align-items:center;flex-wrap:wrap">
+            <div class="pill">Total mensajería: <span id="env_total_mensajeria" class="result">$0.00</span></div>
+            <div class="pill">Extras: <span id="env_total_extras" class="result">$0.00</span></div>
+          </div>
+          <div class="sep"></div>
+          <div class="tot">Total Envíos: <span id="env_total" class="result">$0.00</span></div>
+          <div class="center-actions">
+            <button class="copy-btn" id="btn_copy_env">Copiar</button>
+            <button class="copy-btn" id="btn_print_env">Exportar a PDF / Imprimir</button>
+            <button class="btn reset" id="btn_reset_env">Reset</button>
+          </div>
+        </div>
+      
+  <div class="center-actions" style="margin-top:10px">
+    <button class="copy-btn" id="btn_copy_resumen">Copiar resumen</button>
+    <button class="copy-btn" id="btn_print_resumen">Exportar a PDF / Imprimir</button>
+  </div>
+</div>
+  </div>
+</section>
+
+
+<!-- RESUMEN -->
+<section id="view-resumen" class="view">
+  <div class="grid">
+    <div class="card md-12">
+      <h3 style="margin:0 0 6px">Resumen General</h3>
+      <div class="sep"></div>
+      <div class="row" style="gap:12px;flex-wrap:wrap;align-items:center">
+        <label class="chk-label"><input type="checkbox" id="sum_incluir_vinil" checked> Incluir Vinil</label>
+        <label class="chk-label"><input type="checkbox" id="sum_incluir_sublim" checked> Incluir Sublimación</label>
+        <label class="chk-label"><input type="checkbox" id="sum_incluir_etiq" checked> Incluir Etiquetas</label>
+        <label class="chk-label"><input type="checkbox" id="sum_incluir_emp" checked> Incluir Empaques</label>
+        <label class="chk-label"><input type="checkbox" id="sum_incluir_env"> Incluir Envíos</label>
+      </div>
+      <div class="sep"></div>
+      <div class="grid">
+        <div class="card md-3"><h4 style="margin:0 0 6px">Vinil</h4><div class="pill">Total: <span id="sum_vinil">$0.00</span></div></div>
+      <div class="sep"></div>
+      <div class="card md-12"><h4 style="margin:0 0 6px">Envíos</h4><div class="pill">Total: <span id="sum_env">$0.00</span></div></div>
+        <div class="card md-3"><h4 style="margin:0 0 6px">Sublimación</h4><div class="pill">Total: <span id="sum_sublim">$0.00</span></div></div>
+        <div class="card md-3"><h4 style="margin:0 0 6px">Etiquetas</h4><div class="pill">Total: <span id="sum_etiq">$0.00</span></div></div>
+        <div class="card md-3"><h4 style="margin:0 0 6px">Empaques</h4><div class="pill">Total: <span id="sum_emp">$0.00</span></div></div>
+      </div>
+      <div class="sep"></div>
+      <div class="tot">Total General Seleccionado: <span id="sum_total" class="result">$0.00</span></div>
+      <div class="sep"></div>
+      <div class="row" style="gap:10px;flex-wrap:wrap">
+        <div class="pill">Precio BCV: <span id="sum_bcv">—</span></div>
+        <div class="pill">Precio Paralelo: <span id="sum_par">—</span></div>
+      </div>
+      <div class="center-actions">
+        <button class="copy-btn" id="btn_copy_sum">Copiar</button>
+        <button class="copy-btn" id="btn_print_sum">Exportar a PDF / Imprimir</button>
+      
+  <div class="center-actions" style="margin-top:10px">
+    <button class="copy-btn" id="btn_copy_resumen">Copiar resumen</button>
+    <button class="copy-btn" id="btn_print_resumen">Exportar a PDF / Imprimir</button>
+  </div>
+</div>
+  </div>
+</section>
+
+<footer class="footer">Suite creada por @subli_mada</footer>
+</div>
+
+<script>
+// ============ Helpers (formato, UI, clipboard) ============
+const USD_FMT = new Intl.NumberFormat('en-US',{style:'currency',currency:'USD'});
+const BS_FMT  = new Intl.NumberFormat('es-VE',{minimumFractionDigits:2,maximumFractionDigits:2});
+function fmtUSD(n){return USD_FMT.format(isFinite(n)?n:0)}
+function fmtBs(n){return 'Bs '+BS_FMT.format(isFinite(n)?n:0)}
+function parseNum(v){ if(typeof v==='number') return v; if(!v) return 0; v=String(v).replace(/[^0-9.,-]/g,'').replace(/,/g,''); return parseFloat(v)||0; }
+
+function copyText(t){
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(t).then(()=>alert('Copiado')).catch(()=>fallbackCopy(t));
+  }else{ fallbackCopy(t); }
+}
+function fallbackCopy(t){
+  const ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.left='-9999px';
+  document.body.appendChild(ta); ta.focus(); ta.select();
+  try{ document.execCommand('copy'); alert('Copiado'); }catch(e){ alert('No se pudo copiar');}
+  document.body.removeChild(ta);
+}
+function qs(id){return document.getElementById(id)}
+
+// Dark mode
+(function initDark(){
+  const t=qs('dark_toggle'); const on=localStorage.getItem('dark_on')==='1';
+  document.body.classList.toggle('dark',on); if(t) t.checked=on;
+  t&&t.addEventListener('change',()=>{const on=t.checked;document.body.classList.toggle('dark',on);localStorage.setItem('dark_on',on?'1':'0');});
+})();
+
+// ============ Navegación ============
+(function initNav(){
+  const buttons=[...document.querySelectorAll('nav button')];
+  const views={divisas:qs('view-divisas'),vinil:qs('view-vinil'),basica:qs('view-basica'),sublimacion:qs('view-sublimacion'),etiquetas:qs('view-etiquetas'),empaques:qs('view-empaques'),resumen:qs('view-resumen')};
+  buttons.forEach(btn=>btn.addEventListener('click',()=>{
+    buttons.forEach(b=>b.classList.remove('active')); btn.classList.add('active');
+    Object.values(views).forEach(v=>v.classList.remove('active')); views[btn.dataset.view].classList.add('active');
+  }));
+})();
+
+// ============ DIVISAS (con formato y persistencia) ============
+const DIV_KEYS=['tasa_bcv','tasa_paralelo','monto_usd','monto_bs_bcv'];
+function divisas_save(){const d={}; DIV_KEYS.forEach(id=>{d[id]=qs(id).value}); localStorage.setItem('divisas_state',JSON.stringify(d));}
+function divisas_load(){const raw=localStorage.getItem('divisas_state'); if(!raw) return; try{const d=JSON.parse(raw); Object.keys(d).forEach(id=>{ if(qs(id)) qs(id).value=d[id];});}catch(e){}}
+function divisas_toText(){
+  const items=[
+    ['Precio BCV', qs('tasa_bcv').value],
+    ['Precio Paralelo', qs('tasa_paralelo').value],
+    ['Equivalente en Paralelo', qs('equiv_paralelo').textContent],
+    ['En Bs (BCV)', qs('bs_bcv').textContent],
+    ['En Bs (Paralelo)', qs('bs_paralelo').textContent],
+    ['En $ desde Bs(BCV)', qs('usd_desde_bs').textContent],
+    ['Equiv. en BCV (desde Paralelo)', qs('equiv_en_bcv_ext').textContent],
+    ['Equiv. en Paralelo (desde BCV)', qs('equiv_en_paralelo_ext').textContent],
+    ['Valor en Bs tasa BCV (bloque ext.)', qs('valor_bs_tasa_bcv_ext').textContent]
+  ];
+  return items.map(([k,v])=>k+': '+v).join('\\n');
+}
+function divisas_update(origen){
+  const bcv=parseFloat(qs('tasa_bcv').value);
+  const par=parseFloat(qs('tasa_paralelo').value);
+  const usd=parseFloat(qs('monto_usd').value);
+  const bs_bcv_input=parseFloat(qs('monto_bs_bcv').value);
+
+  const equiv=(bcv&&par)?(par/bcv):null;
+  qs('equiv_paralelo').textContent=equiv? (equiv.toFixed(4)+'×') : '—';
+
+  if(origen==='desde_bs' && bcv){
+    const usd_from_bs = bs_bcv_input / bcv;
+    qs('usd_desde_bs').textContent = fmtUSD(usd_from_bs);
+  }else if(origen==='desde_bs'){
+    qs('usd_desde_bs').textContent = '—';
+  }
+
+  const bsBCV=(bcv&&usd)? usd*bcv:null;
+  const bsPar=(par&&usd)? usd*par:null;
+  qs('bs_bcv').textContent=bsBCV? fmtBs(bsBCV) : '—';
+  qs('bs_paralelo').textContent=bsPar? fmtBs(bsPar) : '—';
+
+  const diff=(bcv&&par)?(par-bcv):null;
+  qs('diff_bs').textContent=diff? (fmtBs(diff)+'/ $') : '—';
+  qs('gap_pct').textContent=(bcv&&par)? (((par-bcv)/bcv)*100).toFixed(2)+'%' : '—';
+
+  // extendida
+  const usdParIn=parseFloat(qs('usd_paralelo_input').value);
+  const usdBcvIn=parseFloat(qs('usd_bcv_input').value);
+  if(isFinite(usdParIn)&&bcv&&par){
+    const usdEquivBCV=usdParIn*(par/bcv);
+    qs('equiv_en_bcv_ext').textContent=fmtUSD(usdEquivBCV);
+  }else{ qs('equiv_en_bcv_ext').textContent='-';}
+  if(isFinite(usdBcvIn)&&bcv&&par){
+    const usdEquivPar=usdBcvIn*(bcv/par);
+    qs('equiv_en_paralelo_ext').textContent=fmtUSD(usdEquivPar);
+    qs('valor_bs_tasa_bcv_ext').textContent=fmtBs(usdBcvIn*bcv);
+  }else{
+    qs('equiv_en_paralelo_ext').textContent='-';
+    qs('valor_bs_tasa_bcv_ext').textContent='-';
+  }
+
+  divisas_save();
+}
+function divisas_reset(){
+  DIV_KEYS.forEach(id=>qs(id).value='');
+  ['equiv_paralelo','bs_bcv','bs_paralelo','usd_desde_bs','diff_bs','gap_pct','equiv_en_bcv_ext','equiv_en_paralelo_ext','valor_bs_tasa_bcv_ext']
+  .forEach(id=>qs(id).textContent=(id.includes('ext')?'-':'—'));
+  localStorage.removeItem('divisas_state');
+}
+
+qs('tasa_bcv').addEventListener('input',()=>divisas_update());
+qs('tasa_paralelo').addEventListener('input',()=>divisas_update());
+qs('monto_usd').addEventListener('input',()=>divisas_update());
+qs('monto_bs_bcv').addEventListener('input',()=>divisas_update('desde_bs'));
+qs('usd_paralelo_input')?.addEventListener('input',()=>divisas_update());
+qs('usd_bcv_input')?.addEventListener('input',()=>divisas_update());
+qs('btn_copy_div').addEventListener('click',()=>copyText(divisas_toText()));
+qs('btn_reset_div').addEventListener('click',divisas_reset);
+divisas_load(); divisas_update();
+
+// ============ VINIL (con persistencia) ============
+const colores={"Blanco":"#ffffff","Negro":"#000000","Rojo":"#ff0000","Azul":"#0000ff","Verde":"#008000","Amarillo":"#ffff00","Naranja":"#ffa500","Rosa":"#ffc0cb","Morado":"#800080","Gris":"#808080","Dorado":"#ffd700","Plateado":"#c0c0c0","Turquesa":"#40e0d0","Fucsia":"#ff00ff","Marrón":"#8b4513","Beige":"#f5f5dc","Coral":"#ff7f50","Celeste":"#87ceeb","Lima":"#00ff00","Ninguno":"#ffffff"};
+let contador=0;
+function vinil_blockHTML(id){
+  return `
+  <div class="calc-block" id="block${id}" style="border:1px solid #eee;border-radius:12px;padding:12px;background:#fff">
+    <div class="row" style="align-items:center;justify-content:space-between">
+      <label style="margin:0">Color</label>
+      <button class="copy-btn" data-remove="${id}">Eliminar</button>
+    </div>
+    <div class="row" style="align-items:center;margin:6px 0 8px">
+      <span class="color-preview" id="preview${id}" style="background:#fff"></span>
+      <select id="color${id}" style="flex:1;padding:10px;border-radius:12px;border:1px solid #e5e7eb">
+        ${Object.keys(colores).map(c=>`<option value="${c}">${c}</option>`).join('')}
+      </select>
+    </div>
+    <label>Precio del vinil por metro</label>
+    <div class="row" style="align-items:center;gap:6px">
+      <span class="pill">$</span>
+      <input type="number" id="precio${id}" placeholder="Ej: 3.50" step="0.01" min="0">
+    </div>
+    <div class="row" style="gap:8px">
+      <div style="flex:1;min-width:130px"><label>Alto (cm)</label><input type="number" id="alto${id}" step="0.1" min="0"></div>
+      <div style="flex:1;min-width:130px"><label>Ancho (cm)</label><input type="number" id="ancho${id}" step="0.1" min="0"></div>
+    </div>
+    <div class="sep"></div>
+    <div class="row" style="align-items:center;justify-content:space-between">
+      <div class="result" id="resultado${id}">Costo: $0.00</div>
+      <button class="copy-btn" data-copy="${id}">Copiar</button>
+    </div>
+  </div>`;
+}
+function cambiarColor(id){
+  const val=qs('color'+id).value; const color=colores[val]||'#fff';
+  const block=qs('block'+id); const preview=qs('preview'+id);
+  if(preview) preview.style.backgroundColor=color;
+  if(block){ block.style.borderColor=color+'55'; block.style.boxShadow='0 3px 10px '+color+'25'; }
+  vinil_actualizarTotal(); vinil_save();
+}
+function calcular(id){
+  const anchoStd=parseFloat(qs('ancho_estandar').value);
+  const precio=parseFloat(qs('precio'+id).value)||0;
+  const alto=parseFloat(qs('alto'+id).value)||0;
+  const ancho=parseFloat(qs('ancho'+id).value)||0;
+  const resEl=qs('resultado'+id);
+  if(!anchoStd||!precio||!alto||!ancho){ resEl.innerText='Costo: $0.00'; vinil_actualizarTotal(); return; }
+  const base=anchoStd*100; const precioCm2=precio/base; const total=precioCm2*alto*ancho;
+  resEl.innerText='Costo: '+fmtUSD(total); vinil_actualizarTotal(); vinil_save();
+}
+function vinil_actualizarTotal(){
+  let total=0;
+  document.querySelectorAll('[id^="resultado"]').forEach(el=>{ const val=parseNum(el.textContent.replace('Costo:','')); total+=val; });
+  if(qs('margenError').checked) total*=1.2;
+  qs('totalFinal').innerText='Costo total: '+fmtUSD(total);
+}
+function vinil_save(){
+  const data={
+    ancho_estandar: parseNum(qs('ancho_estandar').value),
+    margen: qs('margenError').checked?1:0,
+    blocks: []
+  };
+  document.querySelectorAll('#bloques .calc-block').forEach(b=>{
+    const id=b.id.replace('block','');
+    data.blocks.push({
+      color: qs('color'+id).value,
+      precio: parseNum(qs('precio'+id).value),
+      alto: parseNum(qs('alto'+id).value),
+      ancho: parseNum(qs('ancho'+id).value)
+    });
+  });
+  localStorage.setItem('vinil_state', JSON.stringify(data));
+}
+function vinil_load(){
+  const raw=localStorage.getItem('vinil_state');
+  document.getElementById('bloques').innerHTML=''; contador=0;
+  if(!raw){ agregarBloque(); return; }
+  try{
+    const st=JSON.parse(raw);
+    qs('ancho_estandar').value=st.ancho_estandar||51;
+    qs('margenError').checked=!!st.margen;
+    if(st.blocks && st.blocks.length){
+      st.blocks.forEach(b=>{
+        agregarBloque();
+        const id=contador;
+        qs('color'+id).value=b.color||'Ninguno';
+        cambiarColor(id);
+        qs('precio'+id).value=b.precio||0;
+        qs('alto'+id).value=b.alto||0;
+        qs('ancho'+id).value=b.ancho||0;
+        calcular(id);
+      });
+    }else{ agregarBloque(); }
+    vinil_actualizarTotal();
+  }catch(e){ agregarBloque(); }
+}
+function bloque_toText(id){
+  return `Color: ${qs('color'+id)?.value||''}
+Precio/m: $${qs('precio'+id)?.value||''}
+Alto: ${qs('alto'+id)?.value||''} cm
+Ancho: ${qs('ancho'+id)?.value||''} cm
+${qs('resultado'+id)?.textContent||''}`;
+}
+function agregarBloque(){
+  contador++; const wrap=document.createElement('div'); wrap.className='md-4'; wrap.innerHTML=vinil_blockHTML(contador);
+  qs('bloques').appendChild(wrap);
+  qs('color'+contador).addEventListener('change',()=>cambiarColor(contador));
+  ['precio','alto','ancho'].forEach(p=>qs(p+contador).addEventListener('input',()=>calcular(contador)));
+  wrap.querySelector('[data-copy]').addEventListener('click',()=>copyText(bloque_toText(contador)));
+  wrap.querySelector('[data-remove]').addEventListener('click',()=>{ wrap.remove(); vinil_actualizarTotal(); });
+  cambiarColor(contador);
+}
+function vinil_reset(){ localStorage.removeItem('vinil_state'); qs('bloques').innerHTML=''; qs('totalFinal').innerText='Costo total: $0.00'; contador=0; agregarBloque(); }
+
+qs('btn_add_color').addEventListener('click',agregarBloque);
+qs('btn_reset_vinil').addEventListener('click',vinil_reset);
+qs('ancho_estandar').addEventListener('input',()=>{vinil_actualizarTotal(); vinil_save();});
+qs('margenError').addEventListener('change',()=>{vinil_actualizarTotal(); vinil_save();});
+vinil_load();
+
+// ============ Calculadora básica ============
+const disp=qs('calc-display');
+document.querySelectorAll('#view-basica [data-k]').forEach(b=>b.addEventListener('click',()=>{ disp.value=(disp.value==='0'?'':disp.value)+b.dataset.k; }));
+qs('calc-clear').addEventListener('click',()=>disp.value='');
+qs('calc-eq').addEventListener('click',()=>{ try{ const out=eval(disp.value.replace(/[^0-9+\-*/().]/g,'')); disp.value=String(out);}catch(e){ disp.value='Error'; } });
+document.addEventListener('keydown',e=>{ if(/^[0-9()+\-*/.]$/.test(e.key)){ disp.value=(disp.value==='0'?'':disp.value)+e.key; } else if(e.key==='Enter'){ qs('calc-eq').click(); } else if(e.key==='Backspace'){ disp.value=disp.value.slice(0,-1);} });
+
+// ============ SUBLIMACIÓN ============
+function setText(id,n){ qs(id).value=fmtUSD(n) }
+function setSpan(id,n){ qs(id).textContent=fmtUSD(n) }
+function valNum(id){ const v=parseNum(qs(id).value); return v<0?0:v }
+function unitCost(en,precio,cant){ if(!en) return 0; if(!precio||!cant) return 0; return precio/cant }
+
+const SUB_PRESETS={"Taza":{cant:36,precio:90},"Taza Magica":{cant:36,precio:144},"Jarra Cervecera":{cant:24,precio:96},
+"Termo":{cant:24,precio:180},"Camiseta":{cant:20,precio:100},"Llavero":{cant:50,precio:75},"Mousepad":{cant:50,precio:100},
+"Rompecabezas":{cant:20,precio:80},"Boligrafo":{cant:50,precio:65},"Otros":{cant:1,precio:2.5}};
+
+function sub_applyPreset(){ const sel=qs('d_prod_select'); const p=SUB_PRESETS[sel.value]; if(!p) return; qs('d_prod_cant').value=p.cant; qs('d_prod_precio').value=p.precio; sub_update(); }
+
+const SUB_KEYS=['d_prod_on','d_prod_cant','d_prod_precio','d_papel_on','d_papel_cant','d_papel_precio','d_tinta_on','d_tinta_cant','d_tinta_precio','d_cinta_on','d_cinta_cant','d_cinta_precio','d_empaque_on','d_empaque_cant','d_empaque_precio','e_impresora_on','e_impresora_precio','e_plancha_on','e_plancha_precio','e_pc_on','e_pc_precio','sub_ganancia','sub_impuestos','chk_ganancia','chk_impuestos','d_prod_select'];
+function sub_save(){ const d={}; SUB_KEYS.forEach(k=>{ const el=qs(k); if(!el) return; d[k]= (el.type==='checkbox')?(el.checked?1:0):el.value; }); localStorage.setItem('sublimacion_state',JSON.stringify(d)); }
+function sub_load(){ const raw=localStorage.getItem('sublimacion_state'); if(!raw) return; try{ const d=JSON.parse(raw); Object.keys(d).forEach(k=>{const el=qs(k); if(!el) return; if(el.type==='checkbox') el.checked=!!d[k]; else el.value=d[k];}); }catch(e){} }
+document.addEventListener('input',e=>{ const id=e.target&&e.target.id; if(id && SUB_KEYS.includes(id)) sub_save(); });
+document.addEventListener('change',e=>{ const id=e.target&&e.target.id; if(id && SUB_KEYS.includes(id)) sub_save(); });
+
+function sub_update(){
+  const d0=unitCost(qs('d_prod_on').checked, valNum('d_prod_precio'), valNum('d_prod_cant')); setText('d_prod_ud', d0);
+  const d1=unitCost(qs('d_papel_on').checked, valNum('d_papel_precio'), valNum('d_papel_cant')); setText('d_papel_ud', d1);
+  const d2=unitCost(qs('d_tinta_on').checked, valNum('d_tinta_precio'), valNum('d_tinta_cant')); setText('d_tinta_ud', d2);
+  const d3=unitCost(qs('d_cinta_on').checked, valNum('d_cinta_precio'), valNum('d_cinta_cant')); setText('d_cinta_ud', d3);
+  const d4=unitCost(qs('d_empaque_on').checked, valNum('d_empaque_precio'), valNum('d_empaque_cant')); setText('d_empaque_ud', d4);
+  const totalDirectos=d0+d1+d2+d3+d4; setSpan('sub_total_directos', totalDirectos);
+
+  function dep(chk,precioId,mesId,udId){ const en=qs(chk).checked; const precio=valNum(precioId); const mes=precio/24; const ud=mes/300; setText(mesId,mes); setText(udId,ud); return en?ud:0; }
+  const e1=dep('e_impresora_on','e_impresora_precio','e_impresora_mes','e_impresora_ud');
+  const e2=dep('e_plancha_on','e_plancha_precio','e_plancha_mes','e_plancha_ud');
+  const e3=dep('e_pc_on','e_pc_precio','e_pc_mes','e_pc_ud');
+  const totalDepr=e1+e2+e3; setSpan('sub_total_depr', totalDepr);
+
+  const subtotal=totalDirectos+totalDepr; setSpan('sub_subtotal_no_gi', subtotal);
+  const g=Math.max(0,parseNum(qs('sub_ganancia').value))/100;
+  const i=Math.max(0,parseNum(qs('sub_impuestos').value))/100;
+  const ganVal=qs('chk_ganancia').checked? subtotal*g : 0;
+  const subMasGan=subtotal+ganVal;
+  const impVal=qs('chk_impuestos').checked? subMasGan*i : 0;
+  const total=subMasGan+impVal;
+  setSpan('sub_subtotal', subtotal); setSpan('sub_ganancia_val', ganVal); setSpan('sub_impuestos_val', impVal); setSpan('sub_total', total);
+}
+function sub_reset(){
+  localStorage.removeItem('sublimacion_state');
+  const d={d_prod_cant:36,d_prod_precio:90,d_papel_cant:100,d_papel_precio:10,d_tinta_cant:300,d_tinta_precio:40,d_cinta_cant:100,d_cinta_precio:3,d_empaque_cant:50,d_empaque_precio:5,e_impresora_precio:240,e_plancha_precio:400,e_pc_precio:350,sub_ganancia:40,sub_impuestos:16};
+  Object.keys(d).forEach(k=>{ if(qs(k)) qs(k).value=d[k]; });
+  ['d_prod_on','d_papel_on','d_tinta_on','d_cinta_on','d_empaque_on','e_impresora_on','e_plancha_on','e_pc_on','chk_ganancia','chk_impuestos'].forEach(id=>{ if(qs(id)) qs(id).checked=true; });
+  if(qs('d_prod_select')) qs('d_prod_select').value='Taza';
+  sub_update();
+}
+qs('d_prod_select').addEventListener('change',sub_applyPreset);
+document.querySelectorAll('#view-sublimacion input').forEach(el=>{
+  if(el.type==='number' || el.type==='checkbox') el.addEventListener('input', sub_update);
+});
+qs('btn_print_sub').addEventListener('click',()=>window.print());
+qs('btn_copy_sub').addEventListener('click',()=>{
+  const lines=[
+    'Producto: '+(qs('d_prod_select')?.value||''),
+    'Directos = '+qs('sub_total_directos').textContent,
+    'Depreciación = '+qs('sub_total_depr').textContent,
+    'Total sin G/I = '+qs('sub_subtotal_no_gi').textContent,
+    'Subtotal = '+qs('sub_subtotal').textContent,
+    'Ganancia ('+qs('sub_ganancia').value+'%) = '+qs('sub_ganancia_val').textContent + (qs('chk_ganancia').checked?'':' (omitida)'),
+    'Impuestos ('+qs('sub_impuestos').value+'%) = '+qs('sub_impuestos_val').textContent + (qs('chk_impuestos').checked?'':' (omitidos)'),
+    'Precio de Venta = '+qs('sub_total').textContent
+  ]; copyText(lines.join('\\n'));
+});
+qs('btn_reset_sub').addEventListener('click',sub_reset);
+sub_load(); sub_applyPreset(); sub_update();
+
+// ============ ETIQUETAS (cuchilla por cortes) ============
+function eti_setText(id,n){ qs(id).value=fmtUSD(n) }
+function eti_setSpan(id,n){ qs(id).textContent=fmtUSD(n) }
+function eti_valNum(id){ const v=parseNum(qs(id).value); return v<0?0:v }
+function eti_unitCost(en,precio,cant){ if(!en) return 0; if(!precio||!cant) return 0; return precio/cant }
+const ETI_PRESETS={"Vinil imprimible":{cant:20,precio:13},"Papel fotográfico adhesivo":{cant:50,precio:13},"Etiqueta PVC":{cant:20,precio:15},"Etiqueta BOPP":{cant:20,precio:16},"Holográfico":{cant:20,precio:18},"Transparente":{cant:20,precio:14},"Kraft":{cant:20,precio:12},"Otros":{cant:1,precio:2.5}};
+function eti_applyPreset(){ const sel=qs('eti_d_prod_select'); const p=ETI_PRESETS[sel.value]; if(!p) return; qs('eti_d_prod_cant').value=p.cant; qs('eti_d_prod_precio').value=p.precio; eti_update(); }
+
+const ETI_KEYS=['eti_d_prod_on','eti_d_prod_cant','eti_d_prod_precio','eti_d_tinta_on','eti_d_tinta_cant','eti_d_tinta_precio','eti_d_laminado_on','eti_d_laminado_cant','eti_d_laminado_precio','eti_e_cuchilla_on','eti_e_cuchilla_precio','eti_e_cuchilla_vida','eti_e_plotter_on','eti_e_plotter_precio','eti_e_impresora_on','eti_e_impresora_precio','eti_ganancia','eti_impuestos','eti_chk_ganancia','eti_chk_impuestos','eti_d_prod_select'];
+function eti_save(){ const d={}; ETI_KEYS.forEach(k=>{ const el=qs(k); if(!el) return; d[k]=(el.type==='checkbox')?(el.checked?1:0):el.value; }); localStorage.setItem('etiquetas_state',JSON.stringify(d)); }
+function eti_load(){ const raw=localStorage.getItem('etiquetas_state'); if(!raw) return; try{ const d=JSON.parse(raw); Object.keys(d).forEach(k=>{ const el=qs(k); if(!el) return; if(el.type==='checkbox') el.checked=!!d[k]; else el.value=d[k];}); }catch(e){} }
+document.addEventListener('input',e=>{ const id=e.target&&e.target.id; if(id && ETI_KEYS.includes(id)) eti_save(); });
+document.addEventListener('change',e=>{ const id=e.target&&e.target.id; if(id && ETI_KEYS.includes(id)) eti_save(); });
+
+function eti_update(){
+  const d0=eti_unitCost(qs('eti_d_prod_on').checked, eti_valNum('eti_d_prod_precio'), eti_valNum('eti_d_prod_cant')); eti_setText('eti_d_prod_ud', d0);
+  const d1=eti_unitCost(qs('eti_d_tinta_on').checked, eti_valNum('eti_d_tinta_precio'), eti_valNum('eti_d_tinta_cant')); eti_setText('eti_d_tinta_ud', d1);
+  const d2=eti_unitCost(qs('eti_d_laminado_on').checked, eti_valNum('eti_d_laminado_precio'), eti_valNum('eti_d_laminado_cant')); eti_setText('eti_d_laminado_ud', d2);
+  const totalDirectos=d0+d1+d2; eti_setSpan('eti_total_directos', totalDirectos);
+
+  // Cuchilla por cortes
+  let e1=0;
+  if(qs('eti_e_cuchilla_on').checked){
+    const precio=eti_valNum('eti_e_cuchilla_precio');
+    const vida=Math.max(1, parseInt(qs('eti_e_cuchilla_vida').value||'100',10));
+    const porCorte=precio/vida;
+    eti_setText('eti_e_cuchilla_ud', porCorte);
+    e1=porCorte;
+  }else{ eti_setText('eti_e_cuchilla_ud', 0); }
+
+  function dep(chk,precioId,mesId,udId){ const en=qs(chk).checked; const precio=eti_valNum(precioId); const mes=precio/24; const ud=mes/300; eti_setText(mesId,mes); eti_setText(udId,ud); return en?ud:0; }
+  const e2=dep('eti_e_plotter_on','eti_e_plotter_precio','eti_e_plotter_mes','eti_e_plotter_ud');
+  const e3=dep('eti_e_impresora_on','eti_e_impresora_precio','eti_e_impresora_mes','eti_e_impresora_ud');
+  const totalDepr=e1+e2+e3; eti_setSpan('eti_total_depr', totalDepr);
+
+  const subtotal=totalDirectos+totalDepr; eti_setSpan('eti_subtotal_no_gi', subtotal);
+  const g=Math.max(0,parseNum(qs('eti_ganancia').value))/100;
+  const i=Math.max(0,parseNum(qs('eti_impuestos').value))/100;
+  const ganVal=qs('eti_chk_ganancia').checked? subtotal*g : 0;
+  const subMasGan=subtotal+ganVal;
+  const impVal=qs('eti_chk_impuestos').checked? subMasGan*i : 0;
+  const total=subMasGan+impVal;
+  eti_setSpan('eti_subtotal', subtotal); eti_setSpan('eti_ganancia_val', ganVal); eti_setSpan('eti_impuestos_val', impVal); eti_setSpan('eti_total', total);
+}
+function eti_reset(){
+  localStorage.removeItem('etiquetas_state');
+  const d={eti_d_prod_cant:20,eti_d_prod_precio:13,eti_d_tinta_cant:1000,eti_d_tinta_precio:30,eti_d_laminado_cant:20,eti_d_laminado_precio:10,eti_e_cuchilla_precio:25,eti_e_cuchilla_vida:100,eti_e_plotter_precio:400,eti_e_impresora_precio:240,eti_ganancia:40,eti_impuestos:16};
+  Object.keys(d).forEach(k=>{ if(qs(k)) qs(k).value=d[k]; });
+  ['eti_d_prod_on','eti_d_tinta_on','eti_d_laminado_on','eti_e_cuchilla_on','eti_e_plotter_on','eti_e_impresora_on','eti_chk_ganancia','eti_chk_impuestos'].forEach(id=>{ if(qs(id)) qs(id).checked=true; });
+  if(qs('eti_d_prod_select')) qs('eti_d_prod_select').value='Vinil imprimible';
+  eti_update();
+}
+qs('eti_d_prod_select').addEventListener('change',eti_applyPreset);
+document.querySelectorAll('#view-etiquetas input').forEach(el=>{
+  if(el.type==='number' || el.type==='checkbox') el.addEventListener('input', eti_update);
+});
+qs('btn_print_eti').addEventListener('click',()=>window.print());
+qs('btn_copy_eti').addEventListener('click',()=>{
+  const lines=[
+    'Tipo: '+(qs('eti_d_prod_select')?.value||''),
+    'Directos = '+qs('eti_total_directos').textContent,
+    'Depreciación = '+qs('eti_total_depr').textContent,
+    'Total sin G/I = '+qs('eti_subtotal_no_gi').textContent,
+    'Subtotal = '+qs('eti_subtotal').textContent,
+    'Ganancia ('+qs('eti_ganancia').value+'%) = '+qs('eti_ganancia_val').textContent + (qs('eti_chk_ganancia').checked?'':' (omitida)'),
+    'Impuestos ('+qs('eti_impuestos').value+'%) = '+qs('eti_impuestos_val').textContent + (qs('eti_chk_impuestos').checked?'':' (omitidos)'),
+    'Vida cuchilla (cortes) = '+(qs('eti_e_cuchilla_vida')?.value||''),
+    'Precio de Venta = '+qs('eti_total').textContent
+  ]; copyText(lines.join('\\n'));
+});
+qs('btn_reset_eti').addEventListener('click',eti_reset);
+eti_load(); eti_applyPreset(); eti_update();
+
+// ============ EMPAQUES ============
+function emp_setText(id,n){ qs(id).value=fmtUSD(n) }
+function emp_setSpan(id,n){ qs(id).textContent=fmtUSD(n) }
+function emp_valNum(id){ const v=parseNum(qs(id).value); return v<0?0:v }
+function emp_unitCost(en,precio,cant){ if(!en) return 0; if(!precio||!cant) return 0; return precio/cant }
+const EMP_KEYS=['emp_caja_on','emp_caja_cant','emp_caja_precio','emp_bolsa_on','emp_bolsa_cant','emp_bolsa_precio','emp_relleno_on','emp_relleno_cant','emp_relleno_precio','emp_etiqueta_on','emp_etiqueta_cant','emp_etiqueta_precio','emp_tarjeta_on','emp_tarjeta_cant','emp_tarjeta_precio','emp_cinta_on','emp_cinta_cant','emp_cinta_precio','emp_impresora_on','emp_impresora_precio','emp_ganancia','emp_impuestos','emp_chk_ganancia','emp_chk_impuestos'];
+function emp_save(){ const d={}; EMP_KEYS.forEach(k=>{ const el=qs(k); if(!el) return; d[k]=(el.type==='checkbox')?(el.checked?1:0):el.value; }); localStorage.setItem('empaques_state',JSON.stringify(d)); }
+function emp_load(){ const raw=localStorage.getItem('empaques_state'); if(!raw) return; try{ const d=JSON.parse(raw); Object.keys(d).forEach(k=>{ const el=qs(k); if(!el) return; if(el.type==='checkbox') el.checked=!!d[k]; else el.value=d[k];}); }catch(e){} }
+document.addEventListener('input',e=>{ const id=e.target&&e.target.id; if(id && EMP_KEYS.includes(id)) emp_save(); });
+document.addEventListener('change',e=>{ const id=e.target&&e.target.id; if(id && EMP_KEYS.includes(id)) emp_save(); });
+
+function emp_update(){
+  const d0=emp_unitCost(qs('emp_caja_on').checked, emp_valNum('emp_caja_precio'), emp_valNum('emp_caja_cant')); emp_setText('emp_caja_ud', d0);
+  const d1=emp_unitCost(qs('emp_bolsa_on').checked, emp_valNum('emp_bolsa_precio'), emp_valNum('emp_bolsa_cant')); emp_setText('emp_bolsa_ud', d1);
+  const d2=emp_unitCost(qs('emp_relleno_on').checked, emp_valNum('emp_relleno_precio'), emp_valNum('emp_relleno_cant')); emp_setText('emp_relleno_ud', d2);
+  const d3=emp_unitCost(qs('emp_etiqueta_on').checked, emp_valNum('emp_etiqueta_precio'), emp_valNum('emp_etiqueta_cant')); emp_setText('emp_etiqueta_ud', d3);
+  const d4=emp_unitCost(qs('emp_tarjeta_on').checked, emp_valNum('emp_tarjeta_precio'), emp_valNum('emp_tarjeta_cant')); emp_setText('emp_tarjeta_ud', d4);
+  const d5=emp_unitCost(qs('emp_cinta_on').checked, emp_valNum('emp_cinta_precio'), emp_valNum('emp_cinta_cant')); emp_setText('emp_cinta_ud', d5);
+  const totalDirectos=d0+d1+d2+d3+d4+d5; emp_setSpan('emp_total_directos', totalDirectos);
+
+  function dep(chk,precioId,mesId,udId){ const en=qs(chk).checked; const precio=emp_valNum(precioId); const mes=precio/24; const ud=mes/300; emp_setText(mesId,mes); emp_setText(udId,ud); return en?ud:0; }
+  const e1=dep('emp_impresora_on','emp_impresora_precio','emp_impresora_mes','emp_impresora_ud');
+  const totalDepr=e1; emp_setSpan('emp_total_depr', totalDepr);
+
+  const subtotal=totalDirectos+totalDepr; emp_setSpan('emp_subtotal_no_gi', subtotal);
+  const g=Math.max(0,parseNum(qs('emp_ganancia').value))/100;
+  const i=Math.max(0,parseNum(qs('emp_impuestos').value))/100;
+  const ganVal=qs('emp_chk_ganancia').checked? subtotal*g : 0;
+  const subMasGan=subtotal+ganVal;
+  const impVal=qs('emp_chk_impuestos').checked? subMasGan*i : 0;
+  const total=subMasGan+impVal;
+  emp_setSpan('emp_subtotal', subtotal); emp_setSpan('emp_ganancia_val', ganVal); emp_setSpan('emp_impuestos_val', impVal); emp_setSpan('emp_total', total);
+}
+function emp_reset(){
+  localStorage.removeItem('empaques_state');
+  const d={emp_caja_cant:50,emp_caja_precio:20,emp_bolsa_cant:100,emp_bolsa_precio:12,emp_relleno_cant:1,emp_relleno_precio:5,emp_etiqueta_cant:100,emp_etiqueta_precio:8,emp_tarjeta_cant:50,emp_tarjeta_precio:6,emp_cinta_cant:1,emp_cinta_precio:2,emp_impresora_precio:200,emp_ganancia:30,emp_impuestos:16};
+  Object.keys(d).forEach(k=>{ if(qs(k)) qs(k).value=d[k]; });
+  ['emp_caja_on','emp_bolsa_on','emp_relleno_on','emp_etiqueta_on','emp_tarjeta_on','emp_cinta_on','emp_impresora_on','emp_chk_ganancia','emp_chk_impuestos'].forEach(id=>{ if(qs(id)) qs(id).checked=true; });
+  emp_update();
+}
+document.querySelectorAll('#view-empaques input').forEach(el=>{
+  if(el.type==='number' || el.type==='checkbox') el.addEventListener('input', emp_update);
+});
+qs('btn_print_emp').addEventListener('click',()=>window.print());
+qs('btn_copy_emp').addEventListener('click',()=>{
+  const lines=[
+    'Empaques — Directos = '+qs('emp_total_directos').textContent,
+    'Depreciación = '+qs('emp_total_depr').textContent,
+    'Total sin G/I = '+qs('emp_subtotal_no_gi').textContent,
+    'Subtotal = '+qs('emp_subtotal').textContent,
+    'Ganancia ('+qs('emp_ganancia').value+'%) = '+qs('emp_ganancia_val').textContent + (qs('emp_chk_ganancia').checked?'':' (omitida)'),
+    'Impuestos ('+qs('emp_impuestos').value+'%) = '+qs('emp_impuestos_val').textContent + (qs('emp_chk_impuestos').checked?'':' (omitidos)'),
+    'Precio de Venta = '+qs('emp_total').textContent
+  ]; copyText(lines.join('\\n'));
+});
+qs('btn_reset_emp').addEventListener('click',emp_reset);
+emp_load(); emp_update();
+
+// ============ RESUMEN GENERAL ============
+function sum_parseMoney(txt){ return parseNum(String(txt||'').replace('Costo total:','').replace('$','')); }
+function sum_update(){
+  const incV=qs('sum_incluir_vinil').checked, incS=qs('sum_incluir_sublim').checked, incE=qs('sum_incluir_etiq').checked, incEmp=qs('sum_incluir_emp').checked;
+  const v = sum_parseMoney(qs('totalFinal')?.textContent);
+  const s = parseNum(qs('sub_total')?.textContent);
+  const e = parseNum(qs('eti_total')?.textContent);
+  const m = parseNum(qs('emp_total')?.textContent);
+  qs('sum_vinil').textContent = fmtUSD(v);
+  qs('sum_sublim').textContent = fmtUSD(s);
+  qs('sum_etiq').textContent = fmtUSD(e);
+  qs('sum_emp').textContent = fmtUSD(m);
+  const total = (incV?v:0)+(incS?s:0)+(incE?e:0)+(incEmp?m:0);
+  qs('sum_total').textContent = fmtUSD(total);
+  const bcv = parseNum(qs('tasa_bcv')?.value);
+  const par = parseNum(qs('tasa_paralelo')?.value);
+  qs('sum_bcv').textContent = bcv? fmtBs(bcv): '—';
+  qs('sum_par').textContent = par? fmtBs(par): '—';
+}
+['sum_incluir_vinil','sum_incluir_sublim','sum_incluir_etiq','sum_incluir_emp'].forEach(id=>{ const el=qs(id); if(el) el.addEventListener('change', sum_update); });
+qs('btn_copy_sum').addEventListener('click',()=>{
+  const lines=[
+    'Resumen General',
+    'Vinil = '+qs('sum_vinil').textContent + (qs('sum_incluir_vinil').checked?'':' (omitido)'),
+    'Sublimación = '+qs('sum_sublim').textContent + (qs('sum_incluir_sublim').checked?'':' (omitida)'),
+    'Etiquetas = '+qs('sum_etiq').textContent + (qs('sum_incluir_etiq').checked?'':' (omitidas)'),
+    'Empaques = '+qs('sum_emp').textContent + (qs('sum_incluir_emp').checked?'':' (omitidos)'),
+    'Total General = '+qs('sum_total').textContent,
+    'Precio BCV = '+qs('sum_bcv').textContent,
+    'Precio Paralelo = '+qs('sum_par').textContent
+  ]; copyText(lines.join('\\n'));
+});
+qs('btn_print_sum').addEventListener('click',()=>window.print());
+['totalFinal','sub_total','eti_total','emp_total'].forEach(id=>{
+  const obEl = qs(id);
+  if(obEl){
+    const obs = new MutationObserver(sum_update);
+    obs.observe(obEl, {childList:true, characterData:true, subtree:true});
+  }
+});
+['tasa_bcv','tasa_paralelo'].forEach(id=>qs(id)?.addEventListener('input', sum_update));
+sum_update();
+</script>
+
+<style>
+/* THEME TOKENS */
+:root{
+  --bg: #f6f7fb;
+  --text: #1b2430;
+  --muted: #6b7280;
+  --card: #ffffff;
+  --card-border: #e5e7eb;
+  --pill: #eef2ff;
+  --pill-text: #1e293b;
+  --accent: #2563eb;
+  --accent-contrast: #ffffff;
+  --danger: #ef4444;
+  --input-bg: #ffffff;
+  --input-border: #d1d5db;
+  --shadow: 0 6px 18px rgba(2,6,23,.08);
+}
+html[data-theme="dark"]{
+  --bg: #0f172a;            /* slate-900 */
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+  --card: #111827;          /* gray-900 */
+  --card-border: #1f2937;   /* gray-800 */
+  --pill: #111827;
+  --pill-text: #e5e7eb;
+  --accent: #60a5fa;        /* blue-400 */
+  --accent-contrast: #0b1220;
+  --danger: #f87171;
+  --input-bg: #0b1220;
+  --input-border: #1f2937;
+  --shadow: 0 8px 24px rgba(0,0,0,.45);
+}
+
+/* APPLY TOKENS */
+body{ background: var(--bg); color: var(--text); }
+.card{ background: var(--card) !important; border:1px solid var(--card-border); box-shadow: var(--shadow); }
+label, .muted{ color: var(--muted); }
+input[type=number], input[type=text], select{
+  background: var(--input-bg); color: var(--text); border:1px solid var(--input-border);
+  border-radius: 10px; padding: 6px 10px;
+}
+input:disabled, select:disabled{ opacity:.6; cursor:not-allowed; }
+button, .copy-btn, .btn{
+  background: var(--accent); color: var(--accent-contrast); border:none; border-radius: 10px; padding: 8px 12px; font-weight:600;
+}
+button.reset{ background: transparent; color: var(--text); border:1px dashed var(--muted); }
+button:hover{ filter: brightness(1.05); }
+.pill{ background: var(--pill); color: var(--pill-text); border:1px solid var(--card-border); }
+.sep{ border-bottom:1px dashed var(--card-border); opacity:.65; }
+.excluded{ opacity: .55; filter: grayscale(15%); }
+
+/* Focus & selection */
+:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; border-radius: 8px; }
+::selection{ background: var(--accent); color: var(--accent-contrast); }
+
+/* Views behavior */
+.view{ display:none; }
+.view.active{ display:block; }
+
+/* Scrollbar (WebKit) */
+*::-webkit-scrollbar{ width:10px; height:10px; }
+*::-webkit-scrollbar-thumb{ background: var(--card-border); border-radius: 12px; }
+html[data-theme="dark"] *::-webkit-scrollbar-thumb{ background:#293445; }
+</style>
+
+<script>
+// THEME TOGGLE (Dark/Light) polished
+(function(){
+  const cb = document.getElementById('dark_toggle');
+  const THEME_KEY = 'theme_pref';
+  function apply(mode){
+    document.documentElement.setAttribute('data-theme', mode==='dark' ? 'dark' : 'light');
+    if(cb) cb.checked = (mode==='dark');
+    try{ localStorage.setItem(THEME_KEY, mode); }catch(_){}
+  }
+  const saved = (localStorage.getItem(THEME_KEY)||'').toLowerCase();
+  apply(saved || (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+  if(cb){
+    cb.addEventListener('change', ()=> apply(cb.checked ? 'dark' : 'light'));
+  }
+})();
+
+// NAV
+(function(){
+  function show(view){
+    document.querySelectorAll('.view').forEach(v=>{ v.style.display='none'; v.classList.remove('active'); });
+    const sec=document.getElementById('view-'+view);
+    if(sec){ sec.style.display=''; sec.classList.add('active'); }
+    document.querySelectorAll('#nav button').forEach(b=>b.classList.remove('active'));
+    const btn=document.querySelector('#nav button[data-view="'+view+'"]');
+    if(btn) btn.classList.add('active');
+    try{ localStorage.setItem('last_view', view); }catch(_){}
+  }
+  document.querySelectorAll('#nav button[data-view]').forEach(btn=>{
+    btn.addEventListener('click', ()=>show(btn.getAttribute('data-view')));
+  });
+  const first=document.querySelector('#nav button[data-view]')?.getAttribute('data-view')||'divisas';
+  const last=(localStorage.getItem('last_view')||first);
+  show(last);
+})();
+
+// Helpers
+const debounce = (fn, ms=180) => { let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; };
+function num(v){ return parseFloat(v)||0; }
+function clamp0(n){ return isFinite(n) && n>=0 ? n : 0; }
+function fmtUSD(n){ return '$' + (clamp0(+n)).toFixed(2); }
+
+// ENVIOS
+(function(){
+  function set(id,v){ const el=document.getElementById(id); if(el) el.textContent=fmtUSD(v); }
+  function calc(){
+    const on = document.getElementById('env_mensajeria_on')?.checked;
+    const base=clamp0(num(document.getElementById('env_base')?.value));
+    const km  =clamp0(num(document.getElementById('env_km')?.value));
+    const tkm =clamp0(num(document.getElementById('env_tarifa_km')?.value));
+    const kg  =clamp0(num(document.getElementById('env_kg')?.value));
+    const tkg =clamp0(num(document.getElementById('env_tarifa_kg')?.value));
+    const mens = on ? (base + km*tkm + kg*tkg) : 0;
+    const exEmbOn = document.getElementById('env_embalaje_on')?.checked;
+    const exFraOn = document.getElementById('env_fragil_on')?.checked;
+    const segOn   = document.getElementById('env_seguro_on')?.checked;
+    const exEmb = exEmbOn ? clamp0(num(document.getElementById('env_embalaje')?.value)) : 0;
+    const exFra = exFraOn ? clamp0(num(document.getElementById('env_fragil')?.value)) : 0;
+    const segPct = clamp0(num(document.getElementById('env_seguro_pct')?.value));
+    const exSeg = segOn ? ( (mens + exEmb + exFra) * (segPct/100) ) : 0;
+    const exOtros = clamp0(num(document.getElementById('env_otros')?.value));
+    const extras = exEmb + exFra + exSeg + exOtros;
+    const total = mens + extras;
+    set('env_total_mensajeria', mens);
+    set('env_total_extras', extras);
+    set('env_total', total);
+    try{ resumen_update && resumen_update(); }catch(_){}
+  }
+  // enable/disable
+  function syncDisabled(){
+    const on = document.getElementById('env_mensajeria_on')?.checked;
+    ['env_base','env_km','env_tarifa_km','env_kg','env_tarifa_kg'].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.disabled = !on;
+    });
+    const embOn = document.getElementById('env_embalaje_on')?.checked;
+    const fraOn = document.getElementById('env_fragil_on')?.checked;
+    const segOn = document.getElementById('env_seguro_on')?.checked;
+    const e=document.getElementById('env_embalaje'); if(e) e.disabled = !embOn;
+    const f=document.getElementById('env_fragil'); if(f) f.disabled = !fraOn;
+    const s=document.getElementById('env_seguro_pct'); if(s) s.disabled = !segOn;
+  }
+  const deb = debounce(calc, 120);
+  ['env_mensajeria_on','env_km','env_base','env_tarifa_km','env_kg','env_tarifa_kg','env_embalaje_on','env_fragil_on','env_seguro_on','env_embalaje','env_fragil','env_seguro_pct','env_otros']
+    .forEach(id=>{ const el=document.getElementById(id); if(el){ el.addEventListener('input', deb); el.addEventListener('change', ()=>{ syncDisabled(); deb(); }); }});
+  document.getElementById('btn_copy_env')?.addEventListener('click', ()=>{
+    const t=`Mensajería: ${document.getElementById('env_total_mensajeria').textContent}\\nExtras: ${document.getElementById('env_total_extras').textContent}\\nTotal Envíos: ${document.getElementById('env_total').textContent}`;
+    (navigator.clipboard?.writeText||(()=>{}))(t);
+  });
+  document.getElementById('btn_print_env')?.addEventListener('click', ()=>window.print());
+  document.getElementById('btn_reset_env')?.addEventListener('click', ()=>{
+    const d={env_mensajeria_on:false, env_tipo:'Motorizado local', env_km:0, env_base:0, env_tarifa_km:0, env_kg:0, env_tarifa_kg:0, env_embalaje_on:false, env_fragil_on:false, env_seguro_on:false, env_embalaje:0, env_fragil:0, env_seguro_pct:0, env_otros:0};
+    Object.keys(d).forEach(k=>{const el=document.getElementById(k); if(!el) return; if(el.type==='checkbox') el.checked=!!d[k]; else el.value=d[k];});
+    syncDisabled(); deb();
+  });
+  window.addEventListener('load', ()=>{ syncDisabled(); deb(); });
+})();
+
+// Validation for numbers: >=0 and normalize
+(function(){
+  const onInput = debounce((e)=>{
+    const el = e.target;
+    if(!el || el.type!=='number') return;
+    if(el.value === '') return;
+    el.value = clamp0(parseFloat((el.value||'').toString().replace(',', '.')));
+  }, 100);
+  document.addEventListener('input', onInput);
+  document.addEventListener('change', (e)=>{
+    const el = e.target; if(!el || el.type!=='number') return;
+    el.value = clamp0(parseFloat((el.value||'').toString().replace(',', '.')));
+  });
+})();
+
+// RESUMEN totals incl. Envios
+(function(){
+  function readUSD(sel){ const el=document.querySelector(sel); if(!el) return 0; const raw=(el.textContent||'').replace(/[^0-9.,-]/g,'').replace(/,/g,''); return parseFloat(raw)||0; }
+  function readVin(){ const el=document.getElementById('totalFinal'); if(!el) return 0; const raw=(el.textContent||'').replace(/[^0-9.,-]/g,'').replace(/,/g,''); return parseFloat(raw)||0; }
+  function readEnv(){
+    const g=(id)=>parseFloat(document.getElementById(id)?.value)||0;
+    const on=(id)=>document.getElementById(id)?.checked;
+    const base=g('env_base'), km=g('env_km'), tkm=g('env_tarifa_km'), kg=g('env_kg'), tkg=g('env_tarifa_kg');
+    const mens=on('env_mensajeria_on')?(base+km*tkm+kg*tkg):0;
+    const exEmbal=on('env_embalaje_on')?g('env_embalaje'):0;
+    const exFrag=on('env_fragil_on')?g('env_fragil'):0;
+    const exSeguro=on('env_seguro_on')?((mens+exEmbal+exFrag)*(g('env_seguro_pct')/100)):0;
+    const exOtros=g('env_otros');
+    return mens+exEmbal+exFrag+exSeguro+exOtros;
+  }
+  window.resumen_update=function(){
+    const vin=readVin();
+    const sub=readUSD('#sub_total');
+    const etq=readUSD('#eti_total');
+    const emp=readUSD('#emp_total');
+    const env=readEnv();
+    const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=fmtUSD(v); };
+    set('sum_vinil',vin); set('sum_sublim',sub); set('sum_etiq',etq); set('sum_emp',emp); set('sum_env',env);
+    let total=0;
+    if(document.getElementById('sum_incluir_vinil')?.checked) total+=vin;
+    if(document.getElementById('sum_incluir_sublim')?.checked) total+=sub;
+    if(document.getElementById('sum_incluir_etiq')?.checked) total+=etq;
+    if(document.getElementById('sum_incluir_emp')?.checked) total+=emp;
+    if(document.getElementById('sum_incluir_env')?.checked) total+=env;
+    set('sum_total',total);
+    const bcv=parseFloat(document.getElementById('tasa_bcv')?.value);
+    const par=parseFloat(document.getElementById('tasa_paralelo')?.value);
+    const sb=document.getElementById('sum_bcv'), sp=document.getElementById('sum_par');
+    if(sb) sb.textContent = isFinite(bcv)? ('Bs '+(total*bcv).toFixed(2)) : '—';
+    if(sp) sp.textContent = isFinite(par)? ('Bs '+(total*par).toFixed(2)) : '—';
+  };
+  ['sum_incluir_vinil','sum_incluir_sublim','sum_incluir_etiq','sum_incluir_emp','sum_incluir_env'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.addEventListener('change', window.resumen_update);
+  });
+  document.addEventListener('input', ()=>{ try{ window.resumen_update(); }catch(_){}});
+  document.addEventListener('change', ()=>{ try{ window.resumen_update(); }catch(_){}});
+  window.addEventListener('load', ()=>{ try{ window.resumen_update(); }catch(_){}});
+})();
+
+// RESUMEN Copy/Print
+(function(){
+  const btnC = document.getElementById('btn_copy_resumen');
+  if(btnC) btnC.addEventListener('click', ()=>{
+    const G = id => (document.getElementById(id)?.textContent||'').trim();
+    const lines = [
+      `Vinil: ${G('sum_vinil')}`, `Sublimación: ${G('sum_sublim')}`, `Etiquetas: ${G('sum_etiq')}`,
+      `Empaques: ${G('sum_emp')}`, `Envíos: ${G('sum_env')}`, `TOTAL: ${G('sum_total')}`
+    ];
+    (navigator.clipboard?.writeText||(()=>{}))(lines.join('\\n'));
+  });
+  document.getElementById('btn_print_resumen')?.addEventListener('click', ()=>window.print());
+})();
+</script>
+
+
+<script>
+// Register Service Worker for offline (iOS uses it once added to Home Screen)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('sw.js').catch(function(err){ console.log('SW reg error', err); });
+  });
+}
+
+// Prompt to add to Home Screen (simple hint for Safari users)
+(function(){
+  var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  var isInStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if(isIOS && !isInStandalone){
+    var banner = document.createElement('div');
+    banner.style = 'position:fixed;bottom:10px;left:10px;right:10px;background:#111;color:#fff;padding:12px 14px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,.25);z-index:9999;font-family: system-ui,-apple-system,Segoe UI,Roboto,Poppins,sans-serif;';
+    banner.innerHTML = 'Para usarla como app en iPhone: toca el botón <strong>Compartir</strong> y elige <strong>Añadir a pantalla de inicio</strong>. <button id="a2hsClose" style="float:right;background:#fff;color:#111;border:none;padding:6px 10px;border-radius:8px;cursor:pointer">OK</button>';
+    document.body.appendChild(banner);
+    document.getElementById('a2hsClose').onclick = function(){ banner.remove(); };
+    // Auto-hide after 12s
+    setTimeout(function(){ if (banner && banner.parentNode) banner.parentNode.removeChild(banner); }, 12000);
+  }
+})();
+</script>
+
+</body>
+</html>
