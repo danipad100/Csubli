@@ -135,13 +135,10 @@ body.dark .ud{background:#5e3c49 !important;color:#fff}
 <meta name="theme-color" content="#ff7aa2">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Suite de Calculadoras">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <style>input,select,textarea{font-size:16px!important}html,body{min-height:100vh;height:-webkit-fill-available}</style>
-
 </head>
 <body>
 <div class="app">
@@ -2757,62 +2754,97 @@ function num(v){ return parseFloat(v)||0; }
 function clamp0(n){ return isFinite(n) && n>=0 ? n : 0; }
 function fmtUSD(n){ return '$ ' + fmtEU(n); }
 
-// ENVIOS
+// ENVIOS (fix V19 EU)
 (function(){
-  function set(id,v){ const el=document.getElementById(id); if(el) el.textContent=fmtUSD(v); }
-  function calc(){
-    const on = document.getElementById('env_mensajeria_on')?.checked;
-    const base=clamp0(num(document.getElementById('env_base')?.value));
-    const km  =clamp0(num(document.getElementById('env_km')?.value));
-    const tkm =clamp0(num(document.getElementById('env_tarifa_km')?.value));
-    const kg  =clamp0(num(document.getElementById('env_kg')?.value));
-    const tkg =clamp0(num(document.getElementById('env_tarifa_kg')?.value));
-    const mens = on ? (base + km*tkm + kg*tkg) : 0;
-    const exEmbOn = document.getElementById('env_embalaje_on')?.checked;
-    const exFraOn = document.getElementById('env_fragil_on')?.checked;
-    const segOn   = document.getElementById('env_seguro_on')?.checked;
-    const exEmb = exEmbOn ? clamp0(num(document.getElementById('env_embalaje')?.value)) : 0;
-    const exFra = exFraOn ? clamp0(num(document.getElementById('env_fragil')?.value)) : 0;
-    const segPct = clamp0(num(document.getElementById('env_seguro_pct')?.value));
-    const exSeg = segOn ? ( (mens + exEmb + exFra) * (segPct/100) ) : 0;
-    const exOtros = clamp0(num(document.getElementById('env_otros')?.value));
-    const extras = exEmb + exFra + exSeg + exOtros;
-    const total = mens + extras;
-    set('env_total_mensajeria', mens);
-    set('env_total_extras', extras);
-    set('env_total', total);
-    try{ resumen_update && resumen_update(); }catch(_){}
+  function parseEU(v){
+    if (v == null) return 0;
+    let s = String(v);
+    if (typeof v === 'object' && v) s = (v.value ?? v.textContent ?? '').toString();
+    s = s.trim().replace(/[^0-9.,-]/g, '');
+    if (!s) return 0;
+    if (s.includes(',')) s = s.replace(/\./g,'').replace(',', '.');
+    const n = parseFloat(s);
+    return isFinite(n) ? n : 0;
   }
-  // enable/disable
+  function clamp0(n){ n = +n; return isFinite(n) && n>0 ? n : 0; }
+  const fmtIntl = (Intl && Intl.NumberFormat) ? new Intl.NumberFormat('de-DE', {minimumFractionDigits:2, maximumFractionDigits:2}) : null;
+  function moneyEU(n){
+    n = isFinite(n) ? +n : 0;
+    if (fmtIntl) return '$ ' + fmtIntl.format(n);
+    const s = n.toFixed(2), p = s.split('.'); return '$ ' + p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.') + ',' + p[1];
+  }
+  function setText(id, n){ const el=document.getElementById(id); if(el) el.textContent = moneyEU(n); }
+
+  function calc(){
+    const on  = !!document.getElementById('env_mensajeria_on')?.checked;
+    const base= clamp0(parseEU(document.getElementById('env_base')));
+    const km  = clamp0(parseEU(document.getElementById('env_km')));
+    const tkm = clamp0(parseEU(document.getElementById('env_tarifa_km')));
+    const kg  = clamp0(parseEU(document.getElementById('env_kg')));
+    const tkg = clamp0(parseEU(document.getElementById('env_tarifa_kg')));
+    const mens = on ? (base + km*tkm + kg*tkg) : 0;
+
+    const embOn = !!document.getElementById('env_embalaje_on')?.checked;
+    const fraOn = !!document.getElementById('env_fragil_on')?.checked;
+    const segOn = !!document.getElementById('env_seguro_on')?.checked;
+    const emb   = embOn ? clamp0(parseEU(document.getElementById('env_embalaje'))) : 0;
+    const fra   = fraOn ? clamp0(parseEU(document.getElementById('env_fragil'))) : 0;
+    const pct   = segOn ? clamp0(parseEU(document.getElementById('env_seguro_pct'))) : 0;
+    const otros = clamp0(parseEU(document.getElementById('env_otros')));
+    const segVal= segOn ? ( (mens + emb + fra + otros) * (pct/100) ) : 0;
+    const extras= emb + fra + segVal + otros;
+
+    setText('env_total_mensajeria', mens);
+    setText('env_total_extras', extras);
+    setText('env_total', mens + extras);
+    try{ if (typeof window.resumen_update === 'function') window.resumen_update(); }catch(_){}
+  }
+
   function syncDisabled(){
-    const on = document.getElementById('env_mensajeria_on')?.checked;
+    const on  = !!document.getElementById('env_mensajeria_on')?.checked;
     ['env_base','env_km','env_tarifa_km','env_kg','env_tarifa_kg'].forEach(id=>{
       const el=document.getElementById(id); if(el) el.disabled = !on;
     });
-    const embOn = document.getElementById('env_embalaje_on')?.checked;
-    const fraOn = document.getElementById('env_fragil_on')?.checked;
-    const segOn = document.getElementById('env_seguro_on')?.checked;
+    const embOn = !!document.getElementById('env_embalaje_on')?.checked;
+    const fraOn = !!document.getElementById('env_fragil_on')?.checked;
+    const segOn = !!document.getElementById('env_seguro_on')?.checked;
     const e=document.getElementById('env_embalaje'); if(e) e.disabled = !embOn;
-    const f=document.getElementById('env_fragil'); if(f) f.disabled = !fraOn;
+    const f=document.getElementById('env_fragil');  if(f) f.disabled = !fraOn;
     const s=document.getElementById('env_seguro_pct'); if(s) s.disabled = !segOn;
   }
-  const deb = debounce(calc, 120);
+
+  function onInput(e){
+    const ids = new Set(['env_mensajeria_on','env_km','env_base','env_tarifa_km','env_kg','env_tarifa_kg','env_embalaje_on','env_fragil_on','env_seguro_on','env_embalaje','env_fragil','env_seguro_pct','env_otros']);
+    const t = e && e.target && e.target.id;
+    if (t && !ids.has(t)) return;
+    syncDisabled(); calc();
+  }
+
   ['env_mensajeria_on','env_km','env_base','env_tarifa_km','env_kg','env_tarifa_kg','env_embalaje_on','env_fragil_on','env_seguro_on','env_embalaje','env_fragil','env_seguro_pct','env_otros']
-    .forEach(id=>{ const el=document.getElementById(id); if(el){ el.addEventListener('input', deb); el.addEventListener('change', ()=>{ syncDisabled(); deb(); }); }});
+    .forEach(id=>{ const el=document.getElementById(id); if(el){ el.addEventListener('input', onInput); el.addEventListener('change', onInput); }});
+
   document.getElementById('btn_copy_env')?.addEventListener('click', ()=>{
-    const t=`Mensajería: ${document.getElementById('env_total_mensajeria').textContent}\\nExtras: ${document.getElementById('env_total_extras').textContent}\\nTotal Envíos: ${document.getElementById('env_total').textContent}`;
-    (navigator.clipboard?.writeText||(()=>{}))(t);
+    const t = document.getElementById('env_total')?.textContent || '$ 0,00';
+    try{ navigator.clipboard.writeText(t); }catch(_){}
   });
   document.getElementById('btn_print_env')?.addEventListener('click', ()=>window.print());
   document.getElementById('btn_reset_env')?.addEventListener('click', ()=>{
-    const d={env_mensajeria_on:false, env_tipo:'Motorizado local', env_km:0, env_base:0, env_tarifa_km:0, env_kg:0, env_tarifa_kg:0, env_embalaje_on:false, env_fragil_on:false, env_seguro_on:false, env_embalaje:0, env_fragil:0, env_seguro_pct:0, env_otros:0};
-    Object.keys(d).forEach(k=>{const el=document.getElementById(k); if(!el) return; if(el.type==='checkbox') el.checked=!!d[k]; else el.value=d[k];});
-    syncDisabled(); deb();
+    const defaults = {
+      env_mensajeria_on: false, env_km: 0, env_base: 0, env_tarifa_km: 0, env_kg: 0, env_tarifa_kg: 0,
+      env_embalaje_on: false, env_fragil_on: false, env_seguro_on: false,
+      env_embalaje: 0, env_fragil: 0, env_seguro_pct: 0, env_otros: 0
+    };
+    Object.keys(defaults).forEach(k=>{
+      const el=document.getElementById(k);
+      if (!el) return;
+      if (el.type==='checkbox') el.checked = !!defaults[k];
+      else el.value = defaults[k];
+    });
+    syncDisabled(); calc();
   });
-  window.addEventListener('load', ()=>{ syncDisabled(); deb(); });
-})();
 
-// Validation for numbers: >=0 and normalize
+  window.addEventListener('load', ()=>{ syncDisabled(); calc(); });
+})();// Validation for numbers: >=0 and normalize
 (function(){
   const onInput = debounce((e)=>{
     const el = e.target;
@@ -10102,7 +10134,6 @@ if('serviceWorker' in navigator){
   });
 }
 </script>
-
 </body>
 </html>
 <script>
