@@ -10134,6 +10134,160 @@ if('serviceWorker' in navigator){
   });
 }
 </script>
+
+<script>
+// ===== Margen/Markup FORZADO — Todos los módulos (sub_v15_, vin_, eti_, emp_, dtf_) =====
+(function(){
+  function q(id){ return document.getElementById(id); }
+  function parseEU(v){
+    if (v==null) return 0;
+    v = String(v).replace(/[^\d.,-]/g,'').trim();
+    if (!v) return 0;
+    if (v.indexOf(',')>=0){ v = v.replace(/\./g,'').replace(',', '.'); }
+    var n = parseFloat(v);
+    return isNaN(n) ? 0 : n;
+  }
+  function fmt(n){ return (n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function set$(id,n){ var el=q(id); if(el){ el.textContent = '$ ' + fmt(n); } }
+  function ensureSelector(prefix){
+    var g = q(prefix+'ganancia'); if (!g) return;
+    if (q(prefix+'ganancia_mode')) return;
+    var host = g.parentElement || g;
+    var row = document.createElement('div');
+    row.style = 'display:flex;align-items:center;gap:8px;margin:6px 0';
+    var label = document.createElement('label'); label.style='min-width:120px;'; label.textContent='Modo ganancia:';
+    var sel = document.createElement('select'); sel.id=prefix+'ganancia_mode';
+    sel.innerHTML = '<option value="margen">Margen</option><option value="markup">Markup</option>';
+    try{ sel.value = localStorage.getItem(prefix+'ganancia_mode') || 'margen'; }catch(_){ sel.value='margen'; }
+    sel.addEventListener('change', function(){ try{ localStorage.setItem(prefix+'ganancia_mode', sel.value);}catch(_){} });
+    row.appendChild(label); row.appendChild(sel);
+    host.appendChild(row);
+  }
+  function compute(prefix){
+    var subEl = q(prefix+'subtotal_no_gi') || q(prefix+'subtotal');
+    var gEl = q(prefix+'ganancia'), iEl = q(prefix+'impuestos');
+    if (!subEl || !gEl || !iEl) return null;
+    var subtotal = parseEU(subEl.textContent);
+    var g = Math.max(0, parseEU(gEl.value))/100;
+    var i = Math.max(0, parseEU(iEl.value))/100;
+    var gOn = !!q(prefix+'chk_ganancia')?.checked;
+    var iOn = !!q(prefix+'chk_impuestos')?.checked;
+    var mode = (q(prefix+'ganancia_mode')?.value || (localStorage.getItem(prefix+'ganancia_mode') || 'margen'));
+    var price = subtotal;
+    if (gOn){
+      if (mode === 'margen'){
+        price = (subtotal>0 && g<1) ? subtotal/(1-g) : subtotal;
+      }else{
+        price = subtotal*(1+g);
+      }
+    }
+    var gan = price - subtotal;
+    var imp = iOn ? price*i : 0;
+    var total = price + imp;
+    return {subtotal, gan, imp, total};
+  }
+  var PREFIXES = ['sub_v15_','vin_','eti_','emp_','dtf_'];
+  function step(){
+    PREFIXES.forEach(function(P){
+      if (!q(P+'ganancia')) return;
+      ensureSelector(P);
+      var r = compute(P); if (!r) return;
+      set$(P+'ganancia_val', r.gan);
+      set$(P+'impuestos_val', r.imp);
+      set$(P+'total', r.total);
+      if (q(P+'subtotal')) set$(P+'subtotal', r.subtotal);
+    });
+  }
+  function loop(){ try{ step(); }finally{ window.requestAnimationFrame(loop); } }
+  if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', loop);
+  else loop();
+})();
+</script>
+
+
+<script>
+// ===== Envíos: env_update() con cálculo en vivo (EU-aware) =====
+(function(){
+  function $(id){ return document.getElementById(id); }
+  function numEU(v){
+    if (v==null) return 0;
+    v = String(v).replace(/[^\d.,-]/g,'').trim();
+    if (!v) return 0;
+    if (v.indexOf(',')>=0){ v = v.replace(/\./g,'').replace(',', '.'); }
+    var n = parseFloat(v);
+    return isNaN(n) ? 0 : n;
+  }
+  function fmt(n){ try{ return (n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }catch(_){ return String(n); } }
+  function set$(id, n){ var el=$(id); if (el){ el.textContent = '$' + ' ' + fmt(n); } }
+
+  // Cálculo principal
+  window.env_update = function(){
+    var mensajeriaON = !!$('env_mensajeria_on')?.checked;
+
+    // Lecturas (EU-aware)
+    var base = numEU($('env_base')?.value);
+    var km = numEU($('env_km')?.value);
+    var tarifa_km = numEU($('env_tarifa_km')?.value);
+    var kg = numEU($('env_kg')?.value);
+    var tarifa_kg = numEU($('env_tarifa_kg')?.value);
+
+    // Mensajería sólo si ON
+    var mensajeria = mensajeriaON ? (base + (km*tarifa_km) + (kg*tarifa_kg)) : 0;
+
+    // Extras
+    var embalaje = !!$('env_embalaje_on')?.checked ? numEU($('env_embalaje')?.value) : 0;
+    var fragil   = !!$('env_fragil_on')?.checked   ? numEU($('env_fragil')?.value)   : 0;
+    var otros    = numEU($('env_otros')?.value);
+
+    // Seguro sobre (mensajería + embalaje + frágil + otros) si ON
+    var seguroPct = numEU($('env_seguro_pct')?.value) / 100;
+    var seguroON  = !!$('env_seguro_on')?.checked;
+    var baseSeguro = mensajeria + embalaje + fragil + otros;
+    var seguro = seguroON ? baseSeguro * Math.max(0, seguroPct) : 0;
+
+    var extras = embalaje + fragil + otros + seguro;
+    var total = mensajeria + extras;
+
+    // Pintar
+    set$('env_total_mensajeria', mensajeria);
+    set$('env_total_extras', extras);
+    set$('env_total', total);
+  };
+
+  function bind(){
+    // Inputs numéricos
+    ['env_base','env_km','env_tarifa_km','env_kg','env_tarifa_kg','env_embalaje','env_fragil','env_otros','env_seguro_pct'].forEach(function(id){
+      var el=$(id); if (!el) return;
+      el.addEventListener('input', env_update);
+      el.addEventListener('change', env_update);
+    });
+    // Checkboxes
+    ['env_mensajeria_on','env_embalaje_on','env_fragil_on','env_seguro_on'].forEach(function(id){
+      var el=$(id); if (!el) return;
+      el.addEventListener('change', env_update);
+    });
+    // Reset del módulo
+    var rb = $('btn_reset_env');
+    if (rb){
+      rb.addEventListener('click', function(){
+        try{
+          ['env_mensajeria_on','env_embalaje_on','env_fragil_on','env_seguro_on'].forEach(function(id){
+            var el=$(id); if (el) el.checked = false;
+          });
+        }catch(_){}
+        env_update();
+      });
+    }
+  }
+
+  if (document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded', function(){ bind(); env_update(); });
+  }else{
+    bind(); env_update();
+  }
+})();
+</script>
+
 </body>
 </html>
 <script>
