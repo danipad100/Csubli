@@ -1,6 +1,6 @@
 {
-  "name": "Suite de Calculadoras",
-  "short_name": "Calculadoras",
+  "name": "Subli Mada Suite V21",
+  "short_name": "Subli Mada V21",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
@@ -15,7 +15,8 @@
     {
       "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
