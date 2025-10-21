@@ -6,7 +6,7 @@
 
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
-<title>Calculadora_Suite V14 — BASE ESTABLE</title>
+<title>Calculadora_Suite V21 — BASE ESTABLE</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&amp;display=swap" rel="stylesheet"/>
 <style>
 :root{
@@ -140,10 +140,10 @@ body.dark .ud{background:#5e3c49 !important;color:#fff}
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <style>input,select,textarea{font-size:16px!important}html,body{min-height:100vh;height:-webkit-fill-available}</style>
 </head>
-<body>
+<body data-app-version="V21">
 <div class="app">
 <header>
-<h1>Suite de Calculadoras</h1>
+<h1>Suite de Calculadoras — V21</h1>
 <nav id="nav"><button data-view="vinil">Costo de Vinil</button><button data-view="sublimacion">Costos Sublimación</button><button data-view="dtf">Costos DTF (terceros)</button><button data-view="etiquetas">Costos de Etiquetas</button><button data-view="empaques">Costos de Empaques</button><button data-view="envios">Costos de Envíos</button><button data-view="resumen">Resumen General</button><button data-view="conversor">Conversor de Unidades</button><button data-view="basica">Calculadora Básica</button><button data-view="instrucciones">Instrucciones</button></nav>
 <div style="display:flex;gap:8px;align-items:center">
 <label style="display:flex;gap:6px;align-items:center;font-size:12px;background:#ffffff33;padding:6px 10px;border-radius:999px">
@@ -10163,11 +10163,39 @@ if('serviceWorker' in navigator){
     row.appendChild(label); row.appendChild(sel);
     host.appendChild(row);
   }
-  function compute(prefix){
+  
+function compute(prefix){
     var subEl = q(prefix+'subtotal_no_gi') || q(prefix+'subtotal');
     var gEl = q(prefix+'ganancia'), iEl = q(prefix+'impuestos');
     if (!subEl || !gEl || !iEl) return null;
     var subtotal = parseEU(subEl.textContent);
+
+    // === Mano de Obra (sumada al subtotal si está activa) ===
+    try{
+      var moOn = !!q(prefix+'mo_on')?.checked;
+      if (moOn){
+        var s  = parseEU(q(prefix+'mo_sueldo')?.value);
+        var h  = parseEU(q(prefix+'mo_horas_mes')?.value); if (!isFinite(h) || h<=0) h = 176;
+        var st = parseEU(q(prefix+'mo_setup')?.value);
+        var rn = parseEU(q(prefix+'mo_run')?.value);
+        var u  = parseEU(q(prefix+'mo_units')?.value); if (!isFinite(u) || u<=0) u = 1;
+        var hora = s / h;
+        var totalMin = st + (rn * u);
+        var totalMO  = hora * (totalMin/60.0);
+        var mo_ud    = totalMO / u;
+
+        // Mostrar píldora y valor de MO si existen
+        var pill = q(prefix+'mo_pill');
+        if (pill) pill.style.display = (mo_ud>0) ? '' : 'none';
+        if (q(prefix+'mo_val')) set$(prefix+'mo_val', mo_ud);
+
+        subtotal += mo_ud;
+      }else{
+        // ocultar píldora si existe
+        var pillOff = q(prefix+'mo_pill'); if (pillOff) pillOff.style.display = 'none';
+      }
+    }catch(e){ /* no romper cálculo base */ }
+
     var g = Math.max(0, parseEU(gEl.value))/100;
     var i = Math.max(0, parseEU(iEl.value))/100;
     var gOn = !!q(prefix+'chk_ganancia')?.checked;
@@ -10185,7 +10213,8 @@ if('serviceWorker' in navigator){
     var imp = iOn ? price*i : 0;
     var total = price + imp;
     return {subtotal, gan, imp, total};
-  }
+}
+
   var PREFIXES = ['sub_v15_','vin_','eti_','emp_','dtf_'];
   function step(){
     PREFIXES.forEach(function(P){
@@ -10201,90 +10230,6 @@ if('serviceWorker' in navigator){
   function loop(){ try{ step(); }finally{ window.requestAnimationFrame(loop); } }
   if (document.readyState==='loading') document.addEventListener('DOMContentLoaded', loop);
   else loop();
-})();
-</script>
-
-
-<script>
-// ===== Envíos: env_update() con cálculo en vivo (EU-aware) =====
-(function(){
-  function $(id){ return document.getElementById(id); }
-  function numEU(v){
-    if (v==null) return 0;
-    v = String(v).replace(/[^\d.,-]/g,'').trim();
-    if (!v) return 0;
-    if (v.indexOf(',')>=0){ v = v.replace(/\./g,'').replace(',', '.'); }
-    var n = parseFloat(v);
-    return isNaN(n) ? 0 : n;
-  }
-  function fmt(n){ try{ return (n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}); }catch(_){ return String(n); } }
-  function set$(id, n){ var el=$(id); if (el){ el.textContent = '$' + ' ' + fmt(n); } }
-
-  // Cálculo principal
-  window.env_update = function(){
-    var mensajeriaON = !!$('env_mensajeria_on')?.checked;
-
-    // Lecturas (EU-aware)
-    var base = numEU($('env_base')?.value);
-    var km = numEU($('env_km')?.value);
-    var tarifa_km = numEU($('env_tarifa_km')?.value);
-    var kg = numEU($('env_kg')?.value);
-    var tarifa_kg = numEU($('env_tarifa_kg')?.value);
-
-    // Mensajería sólo si ON
-    var mensajeria = mensajeriaON ? (base + (km*tarifa_km) + (kg*tarifa_kg)) : 0;
-
-    // Extras
-    var embalaje = !!$('env_embalaje_on')?.checked ? numEU($('env_embalaje')?.value) : 0;
-    var fragil   = !!$('env_fragil_on')?.checked   ? numEU($('env_fragil')?.value)   : 0;
-    var otros    = numEU($('env_otros')?.value);
-
-    // Seguro sobre (mensajería + embalaje + frágil + otros) si ON
-    var seguroPct = numEU($('env_seguro_pct')?.value) / 100;
-    var seguroON  = !!$('env_seguro_on')?.checked;
-    var baseSeguro = mensajeria + embalaje + fragil + otros;
-    var seguro = seguroON ? baseSeguro * Math.max(0, seguroPct) : 0;
-
-    var extras = embalaje + fragil + otros + seguro;
-    var total = mensajeria + extras;
-
-    // Pintar
-    set$('env_total_mensajeria', mensajeria);
-    set$('env_total_extras', extras);
-    set$('env_total', total);
-  };
-
-  function bind(){
-    // Inputs numéricos
-    ['env_base','env_km','env_tarifa_km','env_kg','env_tarifa_kg','env_embalaje','env_fragil','env_otros','env_seguro_pct'].forEach(function(id){
-      var el=$(id); if (!el) return;
-      el.addEventListener('input', env_update);
-      el.addEventListener('change', env_update);
-    });
-    // Checkboxes
-    ['env_mensajeria_on','env_embalaje_on','env_fragil_on','env_seguro_on'].forEach(function(id){
-      var el=$(id); if (!el) return;
-      el.addEventListener('change', env_update);
-    });
-    // Reset del módulo
-    var rb = $('btn_reset_env');
-    if (rb){
-      rb.addEventListener('click', function(){
-        try{
-          ['env_mensajeria_on','env_embalaje_on','env_fragil_on','env_seguro_on'].forEach(function(id){
-            var el=$(id); if (el) el.checked = false;
-          });
-        }catch(_){}
-        env_update();
-      });
-    }
-  }
-
-  if (document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded', function(){ bind(); env_update(); });
-  }else{
-    bind(); env_update();
-  }
 })();
 </script>
 
