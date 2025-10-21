@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'subli-mada-v21-cache-v2';
+const CACHE_NAME = 'subli-mada-v21-cache-v4';
 const ASSETS = [
   './',
   './index.html',
