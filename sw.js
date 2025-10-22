@@ -1,5 +1,6 @@
 
-const CACHE_NAME = 'subli-mada-v21-cache-v6';
+const VERSION = 'v8';
+const CACHE_NAME = 'subli-mada-v21-cache-' + VERSION;
 const ASSETS = [
   './',
   './index.html',
@@ -11,7 +12,7 @@ const ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
-  self.skipWaiting();
+  // wait for user confirmation to activate new SW
 });
 
 self.addEventListener('activate', (event) => {
@@ -19,6 +20,12 @@ self.addEventListener('activate', (event) => {
     keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
   )));
   self.clients.claim();
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', (event) => {

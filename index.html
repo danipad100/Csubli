@@ -6,7 +6,7 @@
 
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
-<title>Calculadora_Suite V21 — BASE ESTABLE</title>
+<title>Suite de Calculadoras</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&amp;display=swap" rel="stylesheet"/>
 <style>
 :root{
@@ -139,6 +139,7 @@ body.dark .ud{background:#5e3c49 !important;color:#fff}
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <style>input,select,textarea{font-size:16px!important}html,body{min-height:100vh;height:-webkit-fill-available}</style>
+<meta name="apple-mobile-web-app-title" content="Csubli">
 </head>
 <body data-app-version="V21">
 <div class="app">
@@ -10232,6 +10233,34 @@ function compute(prefix){
   else loop();
 })();
 </script>
+
+
+  <script>
+    (function(){
+      if (!('serviceWorker' in navigator)) return;
+      window.addEventListener('load', async () => {
+        try {
+          const reg = await navigator.serviceWorker.register('./sw.js?v=v8');
+          function promptUpdate(sw) {
+            if (!sw) return;
+            const ok = confirm('Hay una actualización disponible de la aplicación. ¿Actualizar ahora?');
+            if (ok) sw.postMessage({type: 'SKIP_WAITING'});
+          }
+          if (reg.waiting) promptUpdate(reg.waiting);
+          reg.addEventListener('updatefound', () => {
+            const newSW = reg.installing;
+            if (!newSW) return;
+            newSW.addEventListener('statechange', () => {
+              if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+                promptUpdate(reg.waiting || newSW);
+              }
+            });
+          });
+          navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
+        } catch (e) { console.warn('SW error:', e); }
+      });
+    })();
+  </script>
 
 </body>
 </html>

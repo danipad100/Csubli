@@ -1,6 +1,6 @@
 {
-  "name": "Subli Mada Suite V21",
-  "short_name": "Subli Mada V21",
+  "name": "Csubli",
+  "short_name": "Csubli",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
