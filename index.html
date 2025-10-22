@@ -10238,26 +10238,46 @@ function compute(prefix){
   <script>
     (function(){
       if (!('serviceWorker' in navigator)) return;
+      const VERSION = 'v9'; // must match sw.js
+      let prompted = false;
+      let refreshing = false;
+
+      function promptAndUpdate(reg) {
+        const waiter = reg.waiting;
+        if (!waiter || prompted) return;
+        prompted = true;
+        const ok = confirm('Hay una actualización disponible de la aplicación. ¿Actualizar ahora?');
+        if (ok) waiter.postMessage({type: 'SKIP_WAITING'});
+      }
+
       window.addEventListener('load', async () => {
         try {
-          const reg = await navigator.serviceWorker.register('./sw.js?v=v8');
-          function promptUpdate(sw) {
-            if (!sw) return;
-            const ok = confirm('Hay una actualización disponible de la aplicación. ¿Actualizar ahora?');
-            if (ok) sw.postMessage({type: 'SKIP_WAITING'});
-          }
-          if (reg.waiting) promptUpdate(reg.waiting);
+          const reg = await navigator.serviceWorker.register('./sw.js?v=' + VERSION);
+
+          // If already waiting (new version installed), prompt once
+          if (reg.waiting) promptAndUpdate(reg);
+
+          // When a new SW is found, wait until it is "installed" then prompt
           reg.addEventListener('updatefound', () => {
             const newSW = reg.installing;
             if (!newSW) return;
             newSW.addEventListener('statechange', () => {
               if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-                promptUpdate(reg.waiting || newSW);
+                // "installed" + we have a controller => an update is ready (reg.waiting exists)
+                promptAndUpdate(reg);
               }
             });
           });
-          navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
-        } catch (e) { console.warn('SW error:', e); }
+
+          // Only reload once when the new SW takes control
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (refreshing) return;
+            refreshing = true;
+            window.location.reload();
+          });
+        } catch (e) {
+          console.warn('SW register error:', e);
+        }
       });
     })();
   </script>
