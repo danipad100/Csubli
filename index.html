@@ -10238,46 +10238,47 @@ function compute(prefix){
   <script>
     (function(){
       if (!('serviceWorker' in navigator)) return;
-      const VERSION = 'v9'; // must match sw.js
+      const VERSION = '10';
+      let activeVersion = null;
+      let waitingVersion = null;
       let prompted = false;
-      let refreshing = false;
 
-      function promptAndUpdate(reg) {
-        const waiter = reg.waiting;
-        if (!waiter || prompted) return;
-        prompted = true;
-        const ok = confirm('Hay una actualización disponible de la aplicación. ¿Actualizar ahora?');
-        if (ok) waiter.postMessage({type: 'SKIP_WAITING'});
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        const data = event.data || {};
+        if (data.type === 'VERSION') {
+          if (data.from === 'active') { activeVersion = String(data.version); localStorage.setItem('app_version', activeVersion); }
+          if (data.from === 'waiting') { waitingVersion = String(data.version); maybePrompt(); }
+        }
+      });
+
+      function requestVersion(target) { if (target) target.postMessage({type:'GET_VERSION'}); }
+      function cmp(a,b){ const na=parseFloat(a), nb=parseFloat(b); if(!isNaN(na)&&!isNaN(nb)) return na-nb; return (''+a).localeCompare(''+b); }
+      function maybePrompt(){
+        if (prompted || !waitingVersion || !activeVersion) return;
+        if (cmp(waitingVersion, activeVersion) > 0){
+          prompted = true;
+          const ok = confirm('Hay una actualización disponible de la aplicación. ¿Actualizar ahora?');
+          if (ok) navigator.serviceWorker.getRegistration().then(reg => reg && reg.waiting && reg.waiting.postMessage({type:'SKIP_WAITING'}));
+        }
       }
 
       window.addEventListener('load', async () => {
-        try {
-          const reg = await navigator.serviceWorker.register('./sw.js?v=' + VERSION);
-
-          // If already waiting (new version installed), prompt once
-          if (reg.waiting) promptAndUpdate(reg);
-
-          // When a new SW is found, wait until it is "installed" then prompt
+        try{
+          const reg = await navigator.serviceWorker.register('./sw.js?v='+VERSION);
+          if (navigator.serviceWorker.controller) requestVersion(navigator.serviceWorker.controller);
+          if (reg.waiting) requestVersion(reg.waiting);
           reg.addEventListener('updatefound', () => {
-            const newSW = reg.installing;
-            if (!newSW) return;
-            newSW.addEventListener('statechange', () => {
-              if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
-                // "installed" + we have a controller => an update is ready (reg.waiting exists)
-                promptAndUpdate(reg);
-              }
+            const installing = reg.installing;
+            if (!installing) return;
+            installing.addEventListener('statechange', () => {
+              if (installing.state === 'installed' && navigator.serviceWorker.controller) requestVersion(reg.waiting || installing);
             });
           });
-
-          // Only reload once when the new SW takes control
+          let refreshing = false;
           navigator.serviceWorker.addEventListener('controllerchange', () => {
-            if (refreshing) return;
-            refreshing = true;
-            window.location.reload();
+            if (refreshing) return; refreshing = true; window.location.reload();
           });
-        } catch (e) {
-          console.warn('SW register error:', e);
-        }
+        }catch(e){ console.warn('SW error:', e); }
       });
     })();
   </script>

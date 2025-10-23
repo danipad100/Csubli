@@ -1,5 +1,5 @@
 
-const VERSION = 'v9';
+const VERSION = '10';
 const CACHE_NAME = 'subli-mada-v21-cache-' + VERSION;
 const ASSETS = [
   './',
@@ -12,7 +12,7 @@ const ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
-  // Do not call skipWaiting() here – wait for user confirmation from the page
+  // Wait for user confirmation to activate
 });
 
 self.addEventListener('activate', (event) => {
@@ -20,10 +20,16 @@ self.addEventListener('activate', (event) => {
     keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))
   )));
   self.clients.claim();
+  self.clients.matchAll({type:'window'}).then(clients => {
+    clients.forEach(c => c.postMessage({type:'VERSION', from:'active', version: VERSION}));
+  });
 });
 
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
+  const data = event.data || {};
+  if (data.type === 'GET_VERSION') {
+    event.source.postMessage({type:'VERSION', from:'waiting', version: VERSION});
+  } else if (data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
 });
