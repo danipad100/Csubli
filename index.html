@@ -1627,8 +1627,30 @@ body.dark #btn_reset_general:hover{
 }
 </style>
 
+
+<style id="pers-dep-nowrap-css">
+/* Producto personalizable — Depreciación: mantener todo en una sola línea (desktop) */
+#view-personalizado .pers-dep-row{ flex-wrap:nowrap !important; }
+@media (max-width: 840px){
+  #view-personalizado .pers-dep-row{ flex-wrap:wrap !important; overflow-x:visible !important; }
+}
+</style>
+
+
+<style id="pers-ui-compact-dep">
+/* Producto personalizable — Depreciación: inputs compactos (Meses / Cap./mes) */
+#view-personalizado .pers-dep-col-meses input.pers-dep-meses{
+  width: 100% !important;
+  max-width: 72px !important;
+}
+#view-personalizado .pers-dep-col-cap input.pers-dep-capacidad{
+  width: 100% !important;
+  max-width: 96px !important;
+}
+</style>
+
 </head>
-<body data-app-version="V21">
+<body data-app-version="V37">
 <div class="app">
 <header class="app-header"><div class="menu-wrapper" style="display:flex;align-items:center;gap:6px;"><button aria-expanded="false" aria-label="Abrir menú" class="burger" id="btnMenu" tabindex="0"><svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" style="display:block" viewbox="0 0 24 24" width="24"><line stroke-width="2.2" x1="3" x2="21" y1="7" y2="7"></line><line stroke-width="2.2" x1="3" x2="21" y1="12" y2="12"></line><line stroke-width="2.2" x1="3" x2="21" y1="17" y2="17"></line></svg></button><span class="menu-label">Menú</span></div><h1>Suite de Calculadoras</h1>
 <div class="header-right" style="display:flex;gap:8px;align-items:center">
@@ -1668,8 +1690,30 @@ body.dark #btn_reset_general:hover{
 <input id="cd_enabled" type="checkbox"/> Activar
     </label>
 <select id="cd_item" style="max-width:220px">
-<option value="algodon">Camiseta de algodón</option>
-<option value="poliester">Camiseta de poliéster</option>
+<option value="algodon" data-ud="3.50">Camiseta de algodón</option>
+<option value="poliester" data-ud="2.50">Camiseta de poliéster</option>
+<option value="bolsa" data-ud="1.80">Bolsa ecológica (tela)</option>
+<option value="delantal" data-ud="3.00">Delantal</option>
+<option value="gorra" data-ud="2.20">Gorra</option>
+
+<option value="taza_blanca" data-ud="1.20">Taza blanca</option>
+<option value="taza_magica" data-ud="2.80">Taza mágica</option>
+<option value="termo_metalico" data-ud="6.50">Termo metálico</option>
+<option value="botella_plastica" data-ud="2.50">Botella plástica</option>
+<option value="vaso_acrilico" data-ud="1.80">Vaso acrílico</option>
+
+<option value="caja_pequena" data-ud="0.60">Caja de cartón pequeña</option>
+<option value="caja_mediana" data-ud="1.00">Caja de cartón mediana</option>
+<option value="carpeta" data-ud="0.90">Carpeta escolar</option>
+<option value="libreta" data-ud="1.20">Libreta</option>
+<option value="cuaderno" data-ud="1.50">Cuaderno</option>
+
+<option value="llavero_acrilico" data-ud="0.70">Llavero acrílico</option>
+<option value="portavasos" data-ud="0.90">Portavasos</option>
+<option value="tabla_mdf_peq" data-ud="1.80">Tabla MDF pequeña</option>
+<option value="acrilico_plano" data-ud="2.20">Acrílico plano</option>
+
+<option value="otros" data-ud="0">Otros</option>
 </select>
 </div>
 <div class="row" style="gap:14px;flex-wrap:wrap">
@@ -5396,6 +5440,20 @@ function fmtUSD(n){ return '$ ' + fmtEU(n); }
 
   // Bind
   ['#cd_cant','#cd_precio'].forEach(sel=>{var el=q(sel); if(el) el.addEventListener('input', recalc);});
+  // Selector de producto (solo preset de precio, sin tocar cálculos)
+  var _ci=q('#cd_item');
+  if(_ci) _ci.addEventListener('change', function(){
+    try{
+      var ud = parseEU((_ci.options[_ci.selectedIndex] && _ci.options[_ci.selectedIndex].getAttribute('data-ud')) || '');
+      if(isFinite(ud) && ud>0){
+        var _c=q('#cd_cant'); var cant = parseEU(_c && _c.value);
+        if(!(cant>0)) cant = 1;
+        var total = ud * cant;
+        var _p=q('#cd_precio'); if(_p) _p.value = fmtEU(total, 2);
+      }
+    }catch(e){}
+    recalc();
+  });
   var _ee=q('#cd_enabled'); if(_ee) _ee.addEventListener('change', recalc);
   var _ei=q('#cd_enabled'); if(_ei) _ei.addEventListener('input', recalc);
   qa('.dep_enabled,.dep_precio,.dep_vida').forEach(function(el){ el.addEventListener('input', recalc); });
@@ -12518,7 +12576,7 @@ document.addEventListener('DOMContentLoaded', function(){
 <script>
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('./sw.js').catch(console.error);
+    navigator.serviceWorker.register('./sw.js?v37').catch(console.error);
   });
 }
 </script>
@@ -13758,7 +13816,7 @@ document.addEventListener('click', function(ev){
 
   // Dynamic rows
   function makeDirRow(data={}){
-    const row = el('div', {class:'row', style:'gap:8px;align-items:end;margin-top:6px'});
+    const row = el('div', {class:'row pers-dep-row', style:'gap:8px;align-items:flex-end;margin-top:6px;flex-wrap:nowrap;overflow-x:auto'});
     row.innerHTML = `
       <div style="min-width:220px;flex:2">
         <label>Descripción</label>
@@ -13776,6 +13834,14 @@ document.addEventListener('click', function(ev){
         <label>Costo Ud.</label>
         <input type="text" class="ud pers-dir-ud" value="$ 0,00" readonly />
       </div>
+      <div style="min-width:140px;flex:1">
+        <label>Cant. a utilizar</label>
+        <input type="text" class="pers-dir-utilcant" value="${(data.utilcant||'1')}" />
+      </div>
+      <div style="min-width:170px;flex:1">
+        <label>Costo utilizado</label>
+        <input type="text" class="ud pers-dir-used" value="$ 0,00" readonly />
+      </div>
       <div>
         <button class="copy-btn" type="button">Eliminar</button>
       </div>
@@ -13790,43 +13856,51 @@ document.addEventListener('click', function(ev){
   }
 
   function makeDepRow(data={}){
-    const row = el('div', {class:'row', style:'gap:8px;align-items:end;margin-top:6px'});
+    const row = el('div', {class:'row pers-dep-row', style:'gap:8px;align-items:flex-end;margin-top:6px;flex-wrap:nowrap;overflow-x:auto'});
     const modoVida = (data.modo||'vida')==='vida';
     row.innerHTML = `
-      <div style="min-width:220px;flex:2">
+      <div style="min-width:200px;flex:2">
         <label>Equipo</label>
         <input type="text" class="pers-dep-desc" value="${(data.desc||'')}" />
       </div>
-      <div style="min-width:140px;flex:1">
+      <div style="min-width:120px;flex:1">
         <label>Precio ($)</label>
         <input type="text" class="pers-dep-precio" value="${(data.precio||'0,00')}" />
       </div>
-      <div style="min-width:160px;flex:1">
+      <div style="min-width:150px;flex:1">
         <label>Modo</label>
         <select class="pers-dep-modo">
           <option value="vida" ${modoVida?'selected':''}>Vida útil (usos)</option>
           <option value="capacidad" ${!modoVida?'selected':''}>Capacidad/mes + meses</option>
         </select>
       </div>
-      <div class="pers-dep-vida-wrap" style="min-width:140px;flex:1;${modoVida?'':'display:none'}">
+      <div class="pers-dep-vida-wrap" style="min-width:120px;flex:1;${modoVida?'':'display:none'}">
         <label>Vida (usos)</label>
         <input type="text" class="pers-dep-vida" value="${(data.vida||'100')}" />
       </div>
-      <div class="pers-dep-cap-wrap" style="display:${modoVida?'none':'block'};gap:8px;flex:2">
-        <div style="min-width:120px;flex:1">
+      <div class="pers-dep-cap-wrap" style="display:${modoVida?'none':'flex'};gap:8px;flex:0 0 auto;align-items:flex-end;min-width:10px">
+        <div class="pers-dep-col-meses" style="min-width:72px;flex:0 0 72px">
           <label>Meses</label>
           <input type="text" class="pers-dep-meses" value="${(data.meses||'24')}" />
         </div>
-        <div style="min-width:120px;flex:1">
+        <div class="pers-dep-col-cap" style="min-width:96px;flex:0 0 96px">
           <label>Cap./mes (uds)</label>
           <input type="text" class="pers-dep-capacidad" value="${(data.capacidad||'100')}" />
         </div>
       </div>
-      <div style="min-width:160px;flex:1">
+      <div style="min-width:130px;flex:1">
         <label>Costo Ud.</label>
         <input type="text" class="ud pers-dep-ud" value="$ 0,00" readonly />
       </div>
-      <div>
+      <div style="min-width:120px;flex:1">
+        <label>Cant. de usos</label>
+        <input type="text" class="pers-dep-usos" value="${(data.usos||'1')}" />
+      </div>
+      <div style="min-width:140px;flex:1">
+        <label>Costo utilizado</label>
+        <input type="text" class="ud pers-dep-used" value="$ 0,00" readonly />
+      </div>
+      <div style="flex:0 0 auto">
         <button class="copy-btn" type="button">Eliminar</button>
       </div>
     `;
@@ -13923,6 +13997,7 @@ document.addEventListener('click', function(ev){
               <input id="pers_mo_on" type="checkbox"/> Activar mano de obra
             </label>
             <div class="pill">MO por Ud.: <span id="pers_mo_ud" class="result">—</span></div>
+            <button class="btn" id="pers_mo_cfg_btn" type="button">Configurar</button>
           </div>
           <div id="pers_mo_cfg" style="margin-top:8px;display:none">
             <div class="row">
@@ -13973,6 +14048,34 @@ document.addEventListener('click', function(ev){
           <button class="btn reset" id="pers_reset">Reset</button>
         </div>
         </div>
+
+
+        <div class="card md-12" id="pers_qty_card">
+          <h4 style="margin:0 0 6px">Cantidad de productos</h4>
+
+          <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap">
+            <label class="chk-label" style="display:flex;align-items:center;gap:6px;margin:0">
+              <input type="checkbox" id="pers_qty_on">
+              <span>Activar cantidad</span>
+            </label>
+
+            <input type="number" id="pers_qty" min="1" step="1" value="1" style="max-width:100px">
+
+            <span class="muted">
+              Multiplica los valores finales del producto por la cantidad Q (solo vista).
+            </span>
+          </div>
+
+          <div class="sep"></div>
+
+          <div class="row" style="flex-wrap:wrap;gap:8px">
+            <div class="pill"><span>Base sin G/I ×Q</span><span class="result mono" id="pers_qty_base">$ 0,00</span></div>
+            <div class="pill"><span>Subtotal ×Q</span><span class="result mono" id="pers_qty_subtotal">$ 0,00</span></div>
+            <div class="pill"><span>Ganancia ×Q</span><span class="result mono" id="pers_qty_g">$ 0,00</span></div>
+            <div class="pill"><span>Impuestos ×Q</span><span class="result mono" id="pers_qty_i">$ 0,00</span></div>
+            <div class="pill"><span>Total ×Q</span><span class="result mono" id="pers_qty_total">$ 0,00</span></div>
+          </div>
+        </div>
       </div>
     `;
     (lastView && lastView.parentNode) ? lastView.parentNode.insertBefore(sec, lastView.nextSibling) : app.appendChild(sec);
@@ -13993,6 +14096,7 @@ document.addEventListener('click', function(ev){
     moSetup = q('#pers_mo_setup', view);
     moRun = q('#pers_mo_run', view);
     moUnits = q('#pers_mo_units', view);
+    const moCfgBtn = q('#pers_mo_cfg_btn', view);
     gMode = q('#pers_gmode', view);
     gOn = q('#pers_g_on', view);
     gPct = q('#pers_g_pct', view);
@@ -14027,7 +14131,22 @@ document.addEventListener('click', function(ev){
         }
       });
     }
-    [indAlq,indInt,indSus,indTra,indEle,indPub,indOtr].forEach(inp=>{
+
+    // MO Configurar (solo muestra/oculta el panel, sin tocar el checkbox)
+    if (moCfgBtn){
+      moCfgBtn.addEventListener('click', (ev)=>{
+        ev.preventDefault();
+        ev.stopPropagation();
+        const box = q('#pers_mo_cfg', view);
+        if (!box) return;
+        const hidden = (getComputedStyle(box).display === 'none');
+        box.style.display = hidden ? 'block' : 'none';
+        // Permite abrir el panel aun si el checkbox está apagado (sin tocar el checkbox)
+        box.dataset.forcedOpen = hidden ? '1' : '';
+      });
+    }
+
+[indAlq,indInt,indSus,indTra,indEle,indPub,indOtr].forEach(inp=>{
       if(!inp) return;
       inp.addEventListener('input', ()=>{ recalcIndirectosMensual(); update(); });
     });
@@ -14053,8 +14172,8 @@ document.addEventListener('click', function(ev){
     indOn.addEventListener('change', ()=>{ q('#pers_ind_cfg', view).style.display = indOn.checked?'block':'none'; update(); });
     [indMensual, indUnits].forEach(inp=> inp.addEventListener('input', update));
 
-    moOn.addEventListener('change', ()=>{ q('#pers_mo_cfg', view).style.display = moOn.checked?'block':'none'; update(); });
-    [moSueldo, moHorasMes, moSetup, moRun, moUnits].forEach(inp=> inp.addEventListener('input', update));
+    moOn.addEventListener('change', ()=>{ const box=q('#pers_mo_cfg', view); if(!moOn.checked){ if(box){ box.style.display='none'; box.dataset.forcedOpen=''; } } update(); });
+[moSueldo, moHorasMes, moSetup, moRun, moUnits].forEach(inp=> inp.addEventListener('input', update));
 
     [gMode, gOn, gPct, iOn, iPct].forEach(inp=> inp.addEventListener('input', update));
 
@@ -14082,10 +14201,14 @@ document.addEventListener('click', function(ev){
       const precio = pers_parseEU(q('.pers-dir-precio', r).value);
       const ud = cant>0 ? (precio / cant) : 0;
       q('.pers-dir-ud', r).value = pers_euro(ud);
-      dirTotal += ud;
-    });
 
-    // dep
+      const util = Math.max(0, pers_parseEU(q('.pers-dir-utilcant', r).value || '1'));
+      const used = ud * util;
+      q('.pers-dir-used', r).value = pers_euro(used);
+
+      dirTotal += used;
+    });
+// dep
     let depTotal = 0;
     depWrap.querySelectorAll('.row').forEach(r=>{
       const precio = pers_parseEU(q('.pers-dep-precio', r).value);
@@ -14101,7 +14224,12 @@ document.addEventListener('click', function(ev){
         ud = cap>0 ? (porMes / cap) : 0;
       }
       q('.pers-dep-ud', r).value = pers_euro(ud);
-      depTotal += ud;
+
+      const usos = Math.max(0, pers_parseEU(q('.pers-dep-usos', r).value || '1'));
+      const used = ud * usos;
+      q('.pers-dep-used', r).value = pers_euro(used);
+
+      depTotal += used;
     });
 
     // indirectos
@@ -14183,7 +14311,8 @@ document.addEventListener('click', function(ev){
         data.directos.push({
           desc:   descEl   ? (descEl.value   || '') : '',
           cant:   cantEl   ? (cantEl.value   || '') : '',
-          precio: precioEl ? (precioEl.value || '') : ''
+          precio: precioEl ? (precioEl.value || '') : '',
+          utilcant: (q('.pers-dir-utilcant', r)?.value || '')
         });
       });
     }
@@ -14198,7 +14327,8 @@ document.addEventListener('click', function(ev){
         const item = {
           desc:   descEl   ? (descEl.value   || '') : '',
           precio: precioEl ? (precioEl.value || '') : '',
-          modo: modo
+          modo: modo,
+          usos: (q('.pers-dep-usos', r)?.value || '')
         };
         if (modo === 'vida'){
           const vidaEl = q('.pers-dep-vida', r);
@@ -14318,7 +14448,7 @@ document.addEventListener('click', function(ev){
     const mo = data.mo || {};
     if (moOn) moOn.checked = !!mo.on;
     const moCfg = q('#pers_mo_cfg', view);
-    if (moCfg) moCfg.style.display = moOn && moOn.checked ? 'flex' : 'none';
+    if (moCfg) moCfg.style.display = (moOn && moOn.checked) || (moCfg.dataset.forcedOpen==='1') ? 'block' : 'none';
 
     if (moSueldo)   moSueldo.value   = mo.sueldo   || '0,00';
     if (moHorasMes) moHorasMes.value = mo.horasMes || '160';
@@ -14455,7 +14585,7 @@ function refreshLoader(){
     depWrap.appendChild(makeDepRow({}));
     indOn.checked=false; q('#pers_ind_cfg', view).style.display='none';
     indMensual.value='0,00'; indUnits.value='100';
-    moOn.checked=false; q('#pers_mo_cfg', view).style.display='none';
+    moOn.checked=false; const _moCfg=q('#pers_mo_cfg', view); if(_moCfg){ _moCfg.style.display='none'; _moCfg.dataset.forcedOpen=''; }
     moSueldo.value='0,00'; moHorasMes.value='160'; moSetup.value='0'; moRun.value='0'; moUnits.value='1';
     gMode.value='Margen'; gOn.checked=true; gPct.value='30'; iOn.checked=true; iPct.value='16';
     update();
@@ -15113,6 +15243,151 @@ if (byId(ids.gVal)) byId(ids.gVal).textContent = fmtEU(G);
       attachEmpQtyObservers();
       recalcEmpQty();
     });
+  }
+})();
+</script>
+
+
+<script>
+// --- Producto personalizable: Cantidad de productos (solo vista, espejo de pills por unidad) ---
+(function(){
+  if (window.__PERS_QTY_BOUND__) return;
+  window.__PERS_QTY_BOUND__ = true;
+
+  function parseEUAny(text){
+    if (text == null) return 0;
+    let s = String(text).trim();
+    if (!s) return 0;
+    let clean = s.replace(/[^\d,.\-]/g, '');
+    if (!clean) return 0;
+
+    if (clean.indexOf(',') >= 0){
+      const lastComma = clean.lastIndexOf(',');
+      const left = clean.slice(0, lastComma).replace(/\./g,'').replace(/,/g,'');
+      const right = clean.slice(lastComma+1).replace(/[^\d]/g,'');
+      const num = parseFloat((left || '0') + '.' + (right || '0'));
+      return isFinite(num) ? num : 0;
+    }
+    clean = clean.replace(/,/g,'');
+    const num = parseFloat(clean);
+    return isFinite(num) ? num : 0;
+  }
+
+  function getPrefixFrom(text){
+    const s = String(text||'').trim();
+    const m = s.match(/^\s*([^\d\-]+)/);
+    let p = (m && m[1]) ? m[1].trim() : '';
+    if (!p) p = '$';
+    return (p + ' ').replace(/\s+/g,' ');
+  }
+
+  function fmtEUAny(num, prefix){
+    const n = isFinite(num) ? num : 0;
+    const out = n.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const p = (prefix && String(prefix).trim()) ? (String(prefix).trim() + ' ') : '$ ';
+    return p + out;
+  }
+
+  function bindWhenReady(){
+    const view = document.getElementById('view-personalizado');
+    if (!view) return false;
+
+    const card = document.getElementById('pers_qty_card');
+    if (!card) return false;
+
+    const onEl = document.getElementById('pers_qty_on');
+    const qEl  = document.getElementById('pers_qty');
+
+    const outBase = document.getElementById('pers_qty_base');
+    const outSub  = document.getElementById('pers_qty_subtotal');
+    const outG    = document.getElementById('pers_qty_g');
+    const outI    = document.getElementById('pers_qty_i');
+    const outTot  = document.getElementById('pers_qty_total');
+
+    const pills = [
+      document.getElementById('pers_pill_dir'),
+      document.getElementById('pers_pill_dep'),
+      document.getElementById('pers_pill_ind'),
+      document.getElementById('pers_pill_sub'),
+      document.getElementById('pers_pill_g'),
+      document.getElementById('pers_pill_i'),
+      document.getElementById('pers_pv')
+    ].filter(Boolean);
+
+    if (!onEl || !qEl || !outBase || !outSub || !outG || !outI || !outTot || pills.length < 7) return false;
+
+    let mo = null;
+
+    function setZeros(prefix){
+      outBase.textContent = fmtEUAny(0, prefix);
+      outSub.textContent  = fmtEUAny(0, prefix);
+      outG.textContent    = fmtEUAny(0, prefix);
+      outI.textContent    = fmtEUAny(0, prefix);
+      outTot.textContent  = fmtEUAny(0, prefix);
+    }
+
+    function refresh(){
+      const prefix = getPrefixFrom(
+        document.getElementById('pers_pv')?.textContent ||
+        document.getElementById('pers_pill_dir')?.textContent ||
+        '$'
+      );
+
+      if (!onEl.checked){
+        setZeros(prefix);
+        return;
+      }
+
+      const Q = Math.max(1, parseInt(qEl.value, 10) || 1);
+
+      const dir = parseEUAny(document.getElementById('pers_pill_dir')?.textContent);
+      const dep = parseEUAny(document.getElementById('pers_pill_dep')?.textContent);
+      const ind = parseEUAny(document.getElementById('pers_pill_ind')?.textContent);
+      const sub = parseEUAny(document.getElementById('pers_pill_sub')?.textContent);
+      const g   = parseEUAny(document.getElementById('pers_pill_g')?.textContent);
+      const i   = parseEUAny(document.getElementById('pers_pill_i')?.textContent);
+      const pv  = parseEUAny(document.getElementById('pers_pv')?.textContent);
+
+      const baseUnit = dir + dep + ind;
+
+      outBase.textContent = fmtEUAny(baseUnit * Q, prefix);
+      outSub.textContent  = fmtEUAny(sub * Q, prefix);
+      outG.textContent    = fmtEUAny(g * Q, prefix);
+      outI.textContent    = fmtEUAny(i * Q, prefix);
+      outTot.textContent  = fmtEUAny(pv * Q, prefix);
+    }
+
+    function observe(){
+      if (mo) return;
+      mo = new MutationObserver(()=>refresh());
+      pills.forEach(el=>{
+        mo.observe(el, { childList:true, characterData:true, subtree:true });
+      });
+    }
+
+    onEl.addEventListener('change', refresh, {passive:true});
+    qEl.addEventListener('input', refresh, {passive:true});
+    qEl.addEventListener('change', refresh, {passive:true});
+
+    observe();
+    refresh();
+    return true;
+  }
+
+  function boot(){
+    let tries = 0;
+    const t = setInterval(()=>{
+      tries++;
+      if (bindWhenReady() || tries > 200){
+        clearInterval(t);
+      }
+    }, 50);
+  }
+
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
   }
 })();
 </script>

@@ -1,5 +1,5 @@
-const VERSION = 'v36';
-const CACHE_NAME = 'csubli-suite-v36';
+const VERSION = 'v37';
+const CACHE_NAME = 'csubli-suite-v37';
 const URLS_TO_CACHE = [
   './',
   './index.html',
