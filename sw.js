@@ -1,5 +1,6 @@
-const VERSION = 'v37';
-const CACHE_NAME = 'csubli-suite-v37';
+const VERSION = 'v38_15';
+const CACHE_NAME = 'suite-csubli-' + VERSION;
+
 const URLS_TO_CACHE = [
   './',
   './index.html',
@@ -17,26 +18,49 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys.map(key => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      )
-    )
+    (async () => {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => (k !== CACHE_NAME) ? caches.delete(k) : null));
+      await self.clients.claim();
+    })()
   );
+});
+
+self.addEventListener('message', event => {
+  const data = event && event.data ? event.data : null;
+  if (!data) return;
+
+  if (data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+    return;
+  }
+
+  if (data.type === 'GET_VERSION') {
+    try {
+      if (event.ports && event.ports[0]) {
+        event.ports[0].postMessage({ type:'VERSION', version: VERSION });
+      }
+    } catch(e) {}
+  }
 });
 
 self.addEventListener('fetch', event => {
   const request = event.request;
-  if (request.method !== 'GET') {
-    return;
-  }
+  if (request.method !== 'GET') return;
+
   event.respondWith(
-    caches.match(request).then(response => {
-      return response || fetch(request);
+    caches.match(request).then(cached => {
+      if (cached) return cached;
+      return fetch(request).then(resp => {
+        try {
+          const url = new URL(request.url);
+          if (url.origin === self.location.origin) {
+            const copy = resp.clone();
+            caches.open(CACHE_NAME).then(cache => cache.put(request, copy)).catch(()=>{});
+          }
+        } catch(e) {}
+        return resp;
+      });
     })
   );
 });
