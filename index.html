@@ -1890,7 +1890,7 @@ body.dark{ background: var(--bg) !important; }
 
 </style>
 </head>
-<body data-app-version="V38.15">
+<body data-app-version="V38.16">
 <div class="app">
 <header class="app-header"><div class="menu-wrapper" style="display:flex;align-items:center;gap:6px;"><button aria-expanded="false" aria-label="Abrir menú" class="burger" id="btnMenu" tabindex="0"><svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" style="display:block" viewbox="0 0 24 24" width="24"><line stroke-width="2.2" x1="3" x2="21" y1="7" y2="7"></line><line stroke-width="2.2" x1="3" x2="21" y1="12" y2="12"></line><line stroke-width="2.2" x1="3" x2="21" y1="17" y2="17"></line></svg></button><span class="menu-label">Menú</span></div><h1>Suite de Calculadoras</h1>
 <div class="header-right" style="display:flex;gap:8px;align-items:center">
@@ -4987,7 +4987,10 @@ sum_update();
     const iPct = useI ? num($("dtf_impuestos"))/100 : 0;
 
     const subtotal = sinGI;
-    const gVal = subtotal * gPct;
+    const _dtfM = (function(){ var el = document.getElementById('dtf_ganancia_mode'); if(el) return el.value; try{ return localStorage.getItem('dtf_ganancia_mode')||'margen'; }catch(_){ return 'margen'; } })();
+    let gVal;
+    if (_dtfM === 'margen' && gPct < 1 && subtotal > 0) { gVal = subtotal / (1 - gPct) - subtotal; }
+    else { gVal = subtotal * gPct; }
     const iVal = (subtotal + gVal) * iPct;
     const total = subtotal + gVal + iVal;
 
@@ -7671,7 +7674,10 @@ async function checkUpdates(){
 
     const gPct = ($('#dtf_chk_ganancia')?.checked ? parseEU($('#dtf_ganancia')?.value) : 0);
     const iPct = ($('#dtf_chk_impuestos')?.checked ? parseEU($('#dtf_impuestos')?.value) : 0);
-    const gVal = subtotal * (gPct/100);
+    const _dtfM2 = (function(){ var el = document.getElementById('dtf_ganancia_mode'); if(el) return el.value; try{ return localStorage.getItem('dtf_ganancia_mode')||'margen'; }catch(_){ return 'margen'; } })();
+    let gVal;
+    if (_dtfM2 === 'margen' && (gPct/100) < 1 && subtotal > 0) { gVal = subtotal / (1 - gPct/100) - subtotal; }
+    else { gVal = subtotal * (gPct/100); }
     const iVal = (subtotal + gVal) * (iPct/100);
     const total = subtotal + gVal + iVal;
 
@@ -8170,7 +8176,10 @@ let total_dep=0, dep_ud=0;
     // --- G/I
     const gan = ui.chkG?.checked ? (parseEU(ui.valG?.value)||0)/100 : 0;
     const imp = ui.chkI?.checked ? (parseEU(ui.valI?.value)||0)/100 : 0;
-    const valG = subtotal_no_gi * gan;
+    const _dtfM3 = (function(){ var el = document.getElementById('dtf_ganancia_mode'); if(el) return el.value; try{ return localStorage.getItem('dtf_ganancia_mode')||'margen'; }catch(_){ return 'margen'; } })();
+    let valG;
+    if (_dtfM3 === 'margen' && gan < 1 && subtotal_no_gi > 0) { valG = subtotal_no_gi / (1 - gan) - subtotal_no_gi; }
+    else { valG = subtotal_no_gi * gan; }
     const valI = (subtotal_no_gi + valG) * imp;
     const subtotal = subtotal_no_gi + valG;
     const total = subtotal_no_gi + valG + valI;
@@ -8828,7 +8837,7 @@ Precio de Venta: ${q('#sub_total').textContent}`;
         }
       });
 
-      ['sub_mo_cfg','eti_mo_cfg','emp_mo_cfg','pers_mo_cfg','pers_ind_cfg'].forEach(id => {
+      ['sub_mo_cfg','eti_mo_cfg','emp_mo_cfg','pers_mo_cfg','pers_ind_cfg','dtf_mo_cfg'].forEach(id => {
         const box = document.getElementById(id);
         if (box) box.style.display = 'none';
       });
@@ -9347,9 +9356,13 @@ Precio de Venta: ${q('#sub_total').textContent}`;
     const chkI = document.getElementById(chkIId)?.checked;
     const pG = euParse(document.getElementById(pGId)?.value);
     const pI = euParse(document.getElementById(pIId)?.value);
-    const modoEl = document.getElementById('esf_modo_ganancia');
-    const modo = modoEl ? modoEl.value : 'markup';
-    const g = chkG ? (modo==='margen' ? base*(pG/(100-pG)) : base*(pG/100)) : 0;
+    const modoEl_mod = document.getElementById(pref+'_ganancia_mode');
+    const modo = modoEl_mod ? modoEl_mod.value : (function(){ try{ return localStorage.getItem(pref+'_ganancia_mode')||'margen'; }catch(_){ return 'margen'; } })();
+    let g = 0;
+    if (chkG) {
+      if (modo==='margen' && (pG/100) < 1 && base > 0) { g = base / (1 - pG/100) - base; }
+      else { g = base*(pG/100); }
+    }
     const i = chkI ? (base + g) * (pI/100) : 0;
 
     const subEl = document.getElementById(subtotalId); if (subEl) subEl.textContent = euro(base);
@@ -9427,9 +9440,13 @@ Precio de Venta: ${q('#sub_total').textContent}`;
     const chkI = document.getElementById(ids.chkI)?.checked;
     const pG = euParse(document.getElementById(ids.pG)?.value);
     const pI = euParse(document.getElementById(ids.pI)?.value);
-    const modoEl = document.getElementById('esf_modo_ganancia');
-    const modo = modoEl ? modoEl.value : 'markup';
-    const g = chkG ? (modo==='margen' ? subtotal*(pG/(100-pG)) : subtotal*(pG/100)) : 0;
+    const modoEl_dtf = document.getElementById(pref+'_ganancia_mode');
+    const modo = modoEl_dtf ? modoEl_dtf.value : (function(){ try{ return localStorage.getItem(pref+'_ganancia_mode')||'margen'; }catch(_){ return 'margen'; } })();
+    let g = 0;
+    if (chkG) {
+      if (modo==='margen' && (pG/100) < 1 && subtotal > 0) { g = subtotal / (1 - pG/100) - subtotal; }
+      else { g = subtotal*(pG/100); }
+    }
     const i = chkI ? (subtotal+g)*(pI/100) : 0;
     const set = (id,val)=>{ const el=document.getElementById(id); if(!el) return; const txt=euro(val); if(el.textContent!==txt) el.textContent=txt; };
     set(ids.subtotal, subtotal);
@@ -9487,9 +9504,13 @@ Precio de Venta: ${q('#sub_total').textContent}`;
     const chkI = document.getElementById(ids.chkI)?.checked;
     const pG = euParse(document.getElementById(ids.pG)?.value);
     const pI = euParse(document.getElementById(ids.pI)?.value);
-    const modoEl = document.getElementById('esf_modo_ganancia');
-    const modo = modoEl ? modoEl.value : 'markup';
-    const g = chkG ? (modo==='margen' ? subtotal*(pG/(100-pG)) : subtotal*(pG/100)) : 0;
+    const modoEl_dtf = document.getElementById(pref+'_ganancia_mode');
+    const modo = modoEl_dtf ? modoEl_dtf.value : (function(){ try{ return localStorage.getItem(pref+'_ganancia_mode')||'margen'; }catch(_){ return 'margen'; } })();
+    let g = 0;
+    if (chkG) {
+      if (modo==='margen' && (pG/100) < 1 && subtotal > 0) { g = subtotal / (1 - pG/100) - subtotal; }
+      else { g = subtotal*(pG/100); }
+    }
     const i = chkI ? (subtotal+g)*(pI/100) : 0;
     // paint
     const set = (id,val)=>{ const el=document.getElementById(id); if(!el) return; const txt=euro(val); if(el.textContent!==txt) el.textContent=txt; };
@@ -10932,7 +10953,10 @@ sum_update();
     const iPct = useI ? num($("dtf_impuestos"))/100 : 0;
 
     const subtotal = sinGI;
-    const gVal = subtotal * gPct;
+    const _dtfM = (function(){ var el = document.getElementById('dtf_ganancia_mode'); if(el) return el.value; try{ return localStorage.getItem('dtf_ganancia_mode')||'margen'; }catch(_){ return 'margen'; } })();
+    let gVal;
+    if (_dtfM === 'margen' && gPct < 1 && subtotal > 0) { gVal = subtotal / (1 - gPct) - subtotal; }
+    else { gVal = subtotal * gPct; }
     const iVal = (subtotal + gVal) * iPct;
     const total = subtotal + gVal + iVal;
 
@@ -12214,7 +12238,10 @@ Adicionales vinil: ${q('#vinil_adicionales').textContent}`;
 
     const gPct = ($('#dtf_chk_ganancia')?.checked ? parseEU($('#dtf_ganancia')?.value) : 0);
     const iPct = ($('#dtf_chk_impuestos')?.checked ? parseEU($('#dtf_impuestos')?.value) : 0);
-    const gVal = subtotal * (gPct/100);
+    const _dtfM2 = (function(){ var el = document.getElementById('dtf_ganancia_mode'); if(el) return el.value; try{ return localStorage.getItem('dtf_ganancia_mode')||'margen'; }catch(_){ return 'margen'; } })();
+    let gVal;
+    if (_dtfM2 === 'margen' && (gPct/100) < 1 && subtotal > 0) { gVal = subtotal / (1 - gPct/100) - subtotal; }
+    else { gVal = subtotal * (gPct/100); }
     const iVal = (subtotal + gVal) * (iPct/100);
     const total = subtotal + gVal + iVal;
 
@@ -12848,6 +12875,7 @@ Adicionales vinil: ${q('#vinil_adicionales').textContent}`;
 })();
 </script><script>
 (function(){var b=document.getElementById("dtf_ind_cfg_btn");var p=document.getElementById("dtf_ind_cfg"); if(b&&p){b.addEventListener('click',function(){p.style.display=(p.style.display==='none'||!p.style.display)?'block':'none';});}})();
+(function(){var b=document.getElementById("dtf_mo_cfg_btn");var p=document.getElementById("dtf_mo_cfg"); if(b&&p){b.addEventListener('click',function(){p.style.display=(p.style.display==='none'||!p.style.display)?'flex':'none';});}})();
 </script>
 <script>
 // === Blindado: Costos indirectos (DTF) ===
@@ -18774,7 +18802,10 @@ body.dark .icon-copy-btn:hover{
 
     const gPct = $('dtf_chk_ganancia')?.checked ? parseEUValue($('dtf_ganancia')?.value || '0') / 100 : 0;
     const iPct = $('dtf_chk_impuestos')?.checked ? parseEUValue($('dtf_impuestos')?.value || '0') / 100 : 0;
-    const gVal = baseNoGI * gPct;
+    const _dtfM4 = (function(){ var el = document.getElementById('dtf_ganancia_mode'); if(el) return el.value; try{ return localStorage.getItem('dtf_ganancia_mode')||'margen'; }catch(_){ return 'margen'; } })();
+    let gVal;
+    if (_dtfM4 === 'margen' && gPct < 1 && baseNoGI > 0) { gVal = baseNoGI / (1 - gPct) - baseNoGI; }
+    else { gVal = baseNoGI * gPct; }
     const iVal = (baseNoGI + gVal) * iPct;
     const total = baseNoGI + gVal + iVal;
 
