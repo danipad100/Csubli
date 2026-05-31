@@ -1904,7 +1904,7 @@ body.dark{ background: var(--bg) !important; }
 
 </style>
 </head>
-<body data-app-version="V38.18">
+<body data-app-version="V38.20">
 <div class="app">
 <header class="app-header"><div class="menu-wrapper" style="display:flex;align-items:center;gap:6px;"><button aria-expanded="false" aria-label="Abrir menú" class="burger" id="btnMenu" tabindex="0"><svg fill="none" height="24" stroke="currentColor" stroke-linecap="round" style="display:block" viewbox="0 0 24 24" width="24"><line stroke-width="2.2" x1="3" x2="21" y1="7" y2="7"></line><line stroke-width="2.2" x1="3" x2="21" y1="12" y2="12"></line><line stroke-width="2.2" x1="3" x2="21" y1="17" y2="17"></line></svg></button><span class="menu-label">Menú</span></div><h1>Suite de Calculadoras</h1>
 <div class="header-right" style="display:flex;gap:8px;align-items:center">
@@ -4126,7 +4126,15 @@ body.dark{ background: var(--bg) !important; }
 <h4>Actualizaciones (PWA)</h4>
 <p style="margin:6px 0 0">Si tienes la Suite instalada como app (PWA), puedes buscar y aplicar actualizaciones desde aquí.</p>
 
-<div class="row pwa-actions" style="margin-top:10px;gap:8px;align-items:center;flex-wrap:wrap">
+<div style="margin-top:10px;display:flex;gap:12px;flex-wrap:wrap">
+  <span style="font-size:0.82em">
+    Instalada: <code id="pwa_ver_active" style="font-size:1em;opacity:0.7">—</code>
+  </span>
+  <span id="pwa_ver_pending_wrap" style="font-size:0.82em;display:none">
+    → Disponible: <code id="pwa_ver_pending" style="font-size:1em;color:var(--ok,#3a3)">—</code>
+  </span>
+</div>
+<div class="row pwa-actions" style="margin-top:8px;gap:8px;align-items:center;flex-wrap:wrap">
   <button class="btn neutral" id="btn_pwa_check_updates" type="button">Buscar actualizaciones</button>
   <button class="btn ok" id="btn_pwa_apply_update" type="button" style="display:none">Actualizar ahora</button>
   <button class="btn" id="btn_restore_factory_defaults" type="button">Restablecer valores predeterminados</button>
@@ -7108,15 +7116,25 @@ Adicionales vinil: ${q('#vinil_adicionales').textContent}`;
   const btnCheck = document.getElementById('btn_pwa_check_updates');
   const btnApply = document.getElementById('btn_pwa_apply_update');
   const statusEl = document.getElementById('pwa_update_status');
+  const verActiveEl  = document.getElementById('pwa_ver_active');
+  const verPendingEl = document.getElementById('pwa_ver_pending');
+  const verPendingWrap = document.getElementById('pwa_ver_pending_wrap');
 
   function setStatus(t){ if(statusEl) statusEl.textContent = t; }
   function hasSW(){ return ('serviceWorker' in navigator); }
+  function setVerActive(v){  if(verActiveEl)  verActiveEl.textContent  = v || '—'; }
+  function setVerPending(v){
+    if(!verPendingEl || !verPendingWrap) return;
+    if(v){ verPendingEl.textContent = v; verPendingWrap.style.display = ''; }
+    else  { verPendingEl.textContent = '—'; verPendingWrap.style.display = 'none'; }
+  }
 
-  const PWA_VER = 'v38_15';
-  // Registro ÚNICO del Service Worker (con bust de versión) para evitar falsos positivos.
+  const PWA_VER = 'v38_20';
+  // Registro ÚNICO del Service Worker SIN query string — el navegador compara por contenido.
+  // Añadir ?v= causaba que desktop registrara un SW distinto en lugar de actualizar el existente.
   try{
     window.addEventListener('load', function(){
-      if(hasSW()) navigator.serviceWorker.register('./sw.js?v='+encodeURIComponent(PWA_VER)).catch(function(){});
+      if(hasSW()) navigator.serviceWorker.register('./sw.js').catch(function(){});
     });
   }catch(e){}
 
@@ -7167,6 +7185,7 @@ Adicionales vinil: ${q('#vinil_adicionales').textContent}`;
   }
 async function checkUpdates(){
     showApply(false);
+    setVerPending(null);
 
     if(!hasSW()){
       setStatus('Este navegador no soporta actualizaciones PWA.');
@@ -7177,6 +7196,12 @@ async function checkUpdates(){
     if(!reg){
       setStatus('No hay Service Worker registrado (instala la PWA para actualizar).');
       return;
+    }
+
+    // Mostrar versión activa actual
+    if(reg.active){
+      const vA = await getSWVersion(reg.active);
+      setVerActive(vA);
     }
 
     listenControllerChange();
@@ -7190,27 +7215,30 @@ async function checkUpdates(){
     }
     // Si ya hay uno esperando
     if(reg.waiting){
-      // Confirmar que realmente es una versión distinta (evita falsos positivos)
       try{
         const vA = await getSWVersion(reg.active);
         const vW = await getSWVersion(reg.waiting);
+        setVerActive(vA);
         if(vA && vW && vA === vW){
           setStatus('Ya estás en la última versión.');
+          setVerPending(null);
           showApply(false);
           return;
         }
+        setVerPending(vW);
       }catch(e){}
       setStatus('Actualización disponible.');
       showApply(true);
       return;
     }
-// Si está instalando, esperar estado
+    // Si está instalando, esperar estado
     if(reg.installing){
       const w = reg.installing;
-      w.addEventListener('statechange', function(){
+      w.addEventListener('statechange', async function(){
         if(w.state === 'installed'){
-          // Si hay controlador activo, es update; si no, primera instalación
           if(navigator.serviceWorker.controller){
+            const vW = await getSWVersion(w);
+            setVerPending(vW);
             setStatus('Actualización disponible.');
             showApply(true);
           }else{
@@ -7227,9 +7255,11 @@ async function checkUpdates(){
     reg.addEventListener('updatefound', function(){
       const nw = reg.installing;
       if(!nw) return;
-      nw.addEventListener('statechange', function(){
+      nw.addEventListener('statechange', async function(){
         if(nw.state === 'installed'){
           if(navigator.serviceWorker.controller){
+            const vW = await getSWVersion(nw);
+            setVerPending(vW);
             setStatus('Actualización disponible.');
             showApply(true);
           }else{
@@ -7241,7 +7271,6 @@ async function checkUpdates(){
 
     // Si no apareció nada, asumir que está al día
     setTimeout(function(){
-      // Si en ~1s no cambió a "disponible", declaramos al día
       if(statusEl && statusEl.textContent === 'Buscando actualizaciones…'){
         setStatus('Ya estás en la última versión.');
       }
@@ -7282,15 +7311,22 @@ async function checkUpdates(){
       return;
     }
     const reg = await getReg();
+    if(reg && reg.active){
+      const vA = await getSWVersion(reg.active);
+      setVerActive(vA);
+    }
     if(reg && reg.waiting){
       try{
         const vA = await getSWVersion(reg.active);
         const vW = await getSWVersion(reg.waiting);
+        setVerActive(vA);
         if(vA && vW && vA === vW){
           setStatus('Ya estás en la última versión.');
+          setVerPending(null);
           showApply(false);
           return;
         }
+        setVerPending(vW);
       }catch(e){}
       setStatus('Actualización disponible.');
       showApply(true);
