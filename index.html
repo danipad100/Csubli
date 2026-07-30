@@ -277,7 +277,7 @@ body.dark .dt-text-light{display:inline}
 .hoj-shape-btn:not(.active):hover{border-color:#c9ccd1}
 </style>
 </head>
-<body data-app-version="V39.91">
+<body data-app-version="V39.93">
 <div class="app">
 <header class="app-header">
   <div class="menu-wrapper">
@@ -2510,7 +2510,7 @@ body.dark .dt-text-light{display:inline}
 </div>
 </div></section>
 
-<footer class="footer">Suite creada por @subli_mada — V39.91</footer>
+<footer class="footer">Suite creada por @subli_mada — V39.93</footer>
 </div>
 <script>
 /* ═══════════════════════════════════════════════════════════
@@ -2521,7 +2521,7 @@ body.dark .dt-text-light{display:inline}
 'use strict';
 const $=id=>document.getElementById(id);
 const $$=(sel,ctx=document)=>Array.from(ctx.querySelectorAll(sel));
-const PWA_VER='v39_91';
+const PWA_VER='v39_93';
 
 /* ═══ HELPERS: number formatting (configurable decimal separator) ═══ */
 const EU_FMT=new Intl.NumberFormat('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -6313,7 +6313,30 @@ $('btn_factory_reset')?.addEventListener('click',()=>{
    ═══════════════════════════════════════════════════════════ */
 (function(){
   if(!('serviceWorker' in navigator))return;
+
+  // --- Recovery link: ?reset_pwa=1 forces a full unregister + cache wipe.
+  // Use this to unstick a device stuck on an old cached version — it does
+  // NOT touch localStorage (catálogo, cotizaciones, ajustes siguen intactos).
+  try{
+    const qp=new URLSearchParams(location.search);
+    if(qp.get('reset_pwa')==='1'){
+      (async()=>{
+        try{
+          const regs=await navigator.serviceWorker.getRegistrations();
+          await Promise.all(regs.map(r=>r.unregister()));
+          const keys=await caches.keys();
+          await Promise.all(keys.map(k=>caches.delete(k)));
+        }catch(e){}
+        qp.delete('reset_pwa');
+        const clean=location.pathname+(qp.toString()?('?'+qp.toString()):'')+location.hash;
+        location.replace(clean);
+      })();
+      return;
+    }
+  }catch(e){}
+
   let newWorker=null;
+
   navigator.serviceWorker.register('./sw.js').then(reg=>{
     // Get active version
     if(reg.active){
@@ -6339,6 +6362,7 @@ $('btn_factory_reset')?.addEventListener('click',()=>{
       });
     });
   }).catch(()=>{});
+
   $('btn_pwa_check')?.addEventListener('click',()=>{
     $('pwa_status').textContent='Buscando…';
     navigator.serviceWorker.getRegistration().then(reg=>{
@@ -6347,8 +6371,14 @@ $('btn_factory_reset')?.addEventListener('click',()=>{
     });
   });
   $('btn_pwa_apply')?.addEventListener('click',()=>{
+    const reload=()=>window.location.reload();
+    if(navigator.serviceWorker.controller){
+      navigator.serviceWorker.addEventListener('controllerchange',reload,{once:true});
+    }
     if(newWorker)newWorker.postMessage({type:'SKIP_WAITING'});
-    window.location.reload();
+    else reload();
+    // Fallback in case controllerchange never fires (e.g. no active controller yet)
+    setTimeout(reload,1200);
   });
 })();
 
