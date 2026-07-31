@@ -277,7 +277,7 @@ body.dark .dt-text-light{display:inline}
 .hoj-shape-btn:not(.active):hover{border-color:#c9ccd1}
 </style>
 </head>
-<body data-app-version="V39.93">
+<body data-app-version="V39.95">
 <div class="app">
 <header class="app-header">
   <div class="menu-wrapper">
@@ -1239,6 +1239,11 @@ body.dark .dt-text-light{display:inline}
 </div>
 <canvas id="hoj_layout" width="600" height="750" style="max-width:100%;border-radius:12px;border:1px solid #eee"></canvas>
 <div class="muted" id="hoj_layout_info" style="margin-top:6px"></div>
+<div class="row" style="gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px">
+<button class="btn ok" id="hoj_export_svg" type="button">Exportar SVG (esta hoja)</button>
+<button class="btn" id="hoj_export_svg_all" type="button" style="display:none">Exportar SVG (todas las hojas)</button>
+</div>
+<div class="muted" style="margin-top:4px;font-size:12px">Archivo vectorial a escala real (1 unidad = 1 cm), listo para importar en Silhouette Studio o Cricut Design Space como líneas de corte.</div>
 </div>
 
 <div class="card md-12">
@@ -2510,7 +2515,7 @@ body.dark .dt-text-light{display:inline}
 </div>
 </div></section>
 
-<footer class="footer">Suite creada por @subli_mada — V39.93</footer>
+<footer class="footer">Suite creada por @subli_mada — V39.95</footer>
 </div>
 <script>
 /* ═══════════════════════════════════════════════════════════
@@ -2521,7 +2526,7 @@ body.dark .dt-text-light{display:inline}
 'use strict';
 const $=id=>document.getElementById(id);
 const $$=(sel,ctx=document)=>Array.from(ctx.querySelectorAll(sel));
-const PWA_VER='v39_93';
+const PWA_VER='v39_95';
 
 /* ═══ HELPERS: number formatting (configurable decimal separator) ═══ */
 const EU_FMT=new Intl.NumberFormat('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -5663,63 +5668,97 @@ function convertMoneyValue(n,fromSym,toSym){
      row) is reported back as a "gap" so it can be shown to the user. ---- */
   function packSheets(designs,uw,uh,sep,maxSheets){
     const sheets=[];
-    const shelvesBySheet=[]; // parallel to sheets: shelvesBySheet[i] = shelves that ended up open on sheet i
+    const skylinesBySheet=[];
     const placedCount=designs.map(()=>0);
     const HARD_CAP=500;
-    let shelves=[]; // open shelves on the current sheet: {y,h,x}  (x = width already consumed, gap-inclusive)
-    let nextY=0;
+    let skylineRef=null;
     function newSheet(){
       if(maxSheets>0&&sheets.length>=maxSheets)return false;
       if(sheets.length>=HARD_CAP)return false;
-      sheets.push([]);shelves=[];shelvesBySheet.push(shelves);nextY=0;return true;
+      sheets.push([]);
+      skylineRef={arr:[{x:0,width:uw,y:0}]};
+      skylinesBySheet.push(skylineRef);
+      return true;
     }
     if(!newSheet())return{sheets,placedCount,gaps:[]};
-    // process tallest designs first so shorter ones remain available to fill gaps later
-    const order=designs.map((d,i)=>i)
-      .filter(i=>designs[i].w>0&&designs[i].h>0&&designs[i].qty>0&&designs[i].w<=uw+1e-9&&designs[i].h<=uh+1e-9)
-      .sort((a,b)=>designs[b].h-designs[a].h);
-    outer:
-    for(const di of order){
-      const d=designs[di];
-      let remaining=d.qty;
-      while(remaining>0){
-        // 1) try to squeeze into leftover space of existing shelves (fills gaps left by other designs)
-        for(const shelf of shelves){
-          if(remaining<=0)break;
-          if(d.h>shelf.h+1e-9)continue; // too tall to share this shelf
-          const availW=uw-shelf.x;
-          const cols=Math.max(0,Math.floor((availW+sep)/(d.w+sep)));
-          if(cols<=0)continue;
-          const place=Math.min(remaining,cols);
-          for(let c=0;c<place;c++){
-            sheets[sheets.length-1].push({x:shelf.x+c*(d.w+sep),y:shelf.y,w:d.w,h:d.h,di});
-          }
-          shelf.x+=place*(d.w+sep);
-          remaining-=place;
-          placedCount[di]+=place;
-        }
-        if(remaining<=0)break;
-        // 2) no leftover space fits it: open a new shelf
-        if(nextY+d.h>uh+1e-9){if(!newSheet())break outer;}
-        const cols=Math.max(1,Math.floor((uw+sep)/(d.w+sep)));
-        const place=Math.min(remaining,cols);
-        for(let c=0;c<place;c++){
-          sheets[sheets.length-1].push({x:c*(d.w+sep),y:nextY,w:d.w,h:d.h,di});
-        }
-        shelves.push({y:nextY,h:d.h,x:place*(d.w+sep)});
-        remaining-=place;
-        placedCount[di]+=place;
-        nextY+=d.h+sep;
+
+    // Same skyline best-fit packer used by the DTF module (dtfPackSheets),
+    // ported here so both modules share one packing strategy. Each design
+    // keeps its own fixed w×h — orientation is decided upfront by the
+    // "Rotar 90°" checkbox on each design card (swaps w/h at input time),
+    // the same approach the DTF module uses for its autorotate toggle.
+    const items=designs.map((d,i)=>({
+      di:i,
+      variants:(d.w>0&&d.h>0&&d.w<=uw+1e-9&&d.h<=uh+1e-9)?[{w:d.w,h:d.h}]:[],
+      qty:Math.max(0,d.qty)
+    })).filter(it=>it.qty>0&&it.variants.length>0);
+
+    function heightUnderSpan(x,w){
+      let y=0;
+      for(const seg of skylineRef.arr){
+        if(seg.x+seg.width<=x+1e-9)continue;
+        if(seg.x>=x+w-1e-9)break;
+        y=Math.max(y,seg.y);
       }
+      return y;
     }
-    // whatever leftover width remains on a shelf once every design (tallest to
-    // shortest) has had a chance to use it is space nothing on the sheet was
-    // short/narrow enough to fill — report it so the UI can show it
+    function updateSkyline(x,w,newY){
+      const out=[];let i=0;
+      const arr=skylineRef.arr;
+      for(;i<arr.length&&arr[i].x+arr[i].width<=x+1e-9;i++)out.push(arr[i]);
+      out.push({x,width:w,y:newY});
+      const cx=x+w;
+      for(;i<arr.length;i++){
+        const seg=arr[i];
+        if(seg.x+seg.width<=cx+1e-9)continue;
+        if(seg.x<cx-1e-9)out.push({x:cx,width:seg.x+seg.width-cx,y:seg.y});
+        else out.push(seg);
+      }
+      const merged=[];
+      for(const seg of out){
+        if(merged.length&&Math.abs(merged[merged.length-1].y-seg.y)<1e-9)merged[merged.length-1].width+=seg.width;
+        else merged.push({x:seg.x,width:seg.width,y:seg.y});
+      }
+      skylineRef.arr=merged;
+    }
+
+    let guard=0;const GUARD_MAX=200000;
+    outer:
+    while(items.some(it=>it.qty>0)){
+      if(++guard>GUARD_MAX)break;
+      let best=null;
+      for(const seg of skylineRef.arr){
+        const x=seg.x;
+        for(const it of items){
+          if(it.qty<=0)continue;
+          for(const v of it.variants){
+            if(x+v.w>uw+1e-9)continue; // the piece itself must fit within the real sheet width
+            // Look under the piece's footprint PLUS its trailing separation buffer,
+            // so nothing else lands closer than `sep` to it on either side.
+            const y=heightUnderSpan(x,v.w+sep);
+            if(y+v.h>uh+1e-9)continue; // the piece itself must fit within the real sheet height
+            if(!best||y<best.y-1e-9||(Math.abs(y-best.y)<1e-9&&x<best.x-1e-9)){
+              best={di:it.di,x,y,w:v.w,h:v.h,it};
+            }
+          }
+        }
+      }
+      if(!best){
+        if(!newSheet())break outer;
+        continue;
+      }
+      sheets[sheets.length-1].push({x:best.x,y:best.y,w:best.w,h:best.h,di:best.di});
+      // Reserve w+sep / h+sep in the skyline (kerf/cutting margin) even though the
+      // drawn item and its gap accounting only ever use the real w×h above.
+      updateSkyline(best.x,best.w+sep,best.y+best.h+sep);
+      best.it.qty--;
+      placedCount[best.di]++;
+    }
+
     const GAP_MIN=0.3; // ignore slivers under ~3mm, not realistically usable
-    const gaps=shelvesBySheet.map(sheetShelves=>
-      sheetShelves
-        .filter(sh=>uw-sh.x>GAP_MIN+1e-9)
-        .map(sh=>({x:sh.x,y:sh.y,w:uw-sh.x,h:sh.h}))
+    const gaps=skylinesBySheet.map((sk,idx)=>
+      sk.arr.filter(seg=>uh-seg.y>GAP_MIN+1e-9)
+        .map(seg=>({x:seg.x,y:seg.y,w:seg.width,h:uh-seg.y}))
     );
     return{sheets,placedCount,gaps};
   }
@@ -5947,6 +5986,8 @@ function convertMoneyValue(n,fromSym,toSym){
     const numEl=$('hoj_sheet_num'),totEl=$('hoj_sheet_total');
     if(numEl)numEl.textContent=lastPack.sheets.length?(currentSheetIdx+1):0;
     if(totEl)totEl.textContent=lastPack.sheets.length;
+    const allBtn=$('hoj_export_svg_all');
+    if(allBtn)allBtn.style.display=lastPack.sheets.length>1?'inline-block':'none';
     renderHojPreview();
   }
   $('hoj_prev_sheet')?.addEventListener('click',()=>{
@@ -5954,6 +5995,59 @@ function convertMoneyValue(n,fromSym,toSym){
   });
   $('hoj_next_sheet')?.addEventListener('click',()=>{
     if(lastPack&&currentSheetIdx<lastPack.sheets.length-1){currentSheetIdx++;renderCurrentSheet();}
+  });
+
+  /* ---- SVG export: cut-ready vector file, one sheet per file.
+     1 SVG user-unit = 1 cm (matches the app's internal canonical unit), so
+     the file opens at true physical scale in Silhouette Studio / Cricut
+     Design Space. Only the actual piece outlines are included — no margin
+     guides, gap shading or labels — so nothing extra gets treated as a cut
+     line. ---- */
+  function hojSheetSVG(sheetIdx){
+    if(!lastPack||!lastGeom)return null;
+    const{W,H,marL,marT}=lastGeom;
+    const items=lastPack.sheets[sheetIdx]||[];
+    const n=(v)=>(Math.round(v*1000)/1000);
+    let paths='';
+    items.forEach(it=>{
+      const shape=lastShapes[it.di]||'square';
+      const x=n(marL+it.x),y=n(marT+it.y),w=n(it.w),h=n(it.h);
+      if(shape==='circle'){
+        paths+=`<ellipse cx="${n(x+w/2)}" cy="${n(y+h/2)}" rx="${n(w/2)}" ry="${n(h/2)}" fill="none" stroke="#000000" stroke-width="0.01"/>\n`;
+      }else if(shape==='rounded'){
+        const r=n(Math.min(w,h)*0.2);
+        paths+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${r}" ry="${r}" fill="none" stroke="#000000" stroke-width="0.01"/>\n`;
+      }else{
+        paths+=`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="#000000" stroke-width="0.01"/>\n`;
+      }
+    });
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${n(W)}cm" height="${n(H)}cm" viewBox="0 0 ${n(W)} ${n(H)}">\n${paths}</svg>\n`;
+  }
+  function downloadTextFile(filename,text,mime){
+    const blob=new Blob([text],{type:mime||'application/octet-stream'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;a.download=filename;
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }
+  $('hoj_export_svg')?.addEventListener('click',()=>{
+    if(!lastPack||!lastPack.sheets.length){alert('Agrega al menos un diseño con ancho, alto y cantidad antes de exportar.');return;}
+    const svg=hojSheetSVG(currentSheetIdx);
+    if(!svg)return;
+    const total=lastPack.sheets.length;
+    const name=total>1?`distribucion_hoja_${currentSheetIdx+1}_de_${total}.svg`:'distribucion_hoja.svg';
+    downloadTextFile(name,svg,'image/svg+xml');
+  });
+  $('hoj_export_svg_all')?.addEventListener('click',()=>{
+    if(!lastPack||!lastPack.sheets.length)return;
+    const total=lastPack.sheets.length;
+    lastPack.sheets.forEach((_,i)=>{
+      setTimeout(()=>{
+        const svg=hojSheetSVG(i);
+        if(svg)downloadTextFile(`distribucion_hoja_${i+1}_de_${total}.svg`,svg,'image/svg+xml');
+      },i*250);
+    });
   });
 
   const hojIds=['hoj_hoja_w','hoj_hoja_h','hoj_mar_top','hoj_mar_bot','hoj_mar_left','hoj_mar_right','hoj_sep'];
