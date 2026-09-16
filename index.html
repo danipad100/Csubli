@@ -277,7 +277,7 @@ body.dark .dt-text-light{display:inline}
 .hoj-shape-btn:not(.active):hover{border-color:#c9ccd1}
 </style>
 </head>
-<body data-app-version="V39.96">
+<body data-app-version="V39.97">
 <div class="app">
 <header class="app-header">
   <div class="menu-wrapper">
@@ -2518,13 +2518,13 @@ body.dark .dt-text-light{display:inline}
 </div>
 <div id="cp_abono_block" class="cot-print-abono"></div>
 <div id="cp_notas_block" class="cot-print-notas"></div>
-<div class="cot-print-footer">Suite creada por @subli_mada</div>
+<div class="cot-print-footer">Suite de calculadoras creada por Sublimada</div>
 </div>
 
 </div>
 </div></section>
 
-<footer class="footer">Suite creada por @subli_mada — V39.96</footer>
+<footer class="footer">Suite creada por @subli_mada — V39.97</footer>
 </div>
 <script>
 /* ═══════════════════════════════════════════════════════════
@@ -2535,7 +2535,7 @@ body.dark .dt-text-light{display:inline}
 'use strict';
 const $=id=>document.getElementById(id);
 const $$=(sel,ctx=document)=>Array.from(ctx.querySelectorAll(sel));
-const PWA_VER='v39_96';
+const PWA_VER='v39_97';
 
 /* ═══ HELPERS: number formatting (configurable decimal separator) ═══ */
 const EU_FMT=new Intl.NumberFormat('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -4967,14 +4967,45 @@ function convertMoneyValue(n,fromSym,toSym){
 
   $('cot_print')?.addEventListener('click',()=>{
     buildPrintView();
-    document.body.classList.add('cot-printing');
-    const all=$$('.view'),was=all.map(v=>v.classList.contains('active'));
-    all.forEach(v=>v.classList.remove('active'));view.classList.add('active');
-    setTimeout(()=>window.print(),30);
-    setTimeout(()=>{
-      all.forEach((v,i)=>{if(was[i])v.classList.add('active');});
-      document.body.classList.remove('cot-printing');
-    },1000);
+    const printHTML=$('cot_print_view')?.innerHTML||'';
+    const printCSS=`
+      *{box-sizing:border-box}
+      html,body{margin:0;padding:24px;background:#fff;color:#221F1A;
+        font-family:'Inter',system-ui,-apple-system,sans-serif;line-height:1.4}
+      .cot-print-header{display:flex;flex-wrap:wrap;gap:24px;padding-bottom:14px;margin-bottom:18px;border-bottom:1px solid #eee}
+      .cot-print-header>div{flex:1;min-width:140px}
+      .cot-print-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#7A756B;margin-bottom:4px}
+      .cot-print-value{font-size:15px;font-weight:600;color:#221F1A}
+      .cot-print-sub{font-size:13px;color:#7A756B;margin-top:2px}
+      .cot-print-table{width:100%;border-collapse:collapse;margin-bottom:18px}
+      .cot-print-table th{text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#7A756B;padding-bottom:10px;border-bottom:2px solid #eee}
+      .cot-print-table th:not(:first-child),.cot-print-table td:not(:first-child){text-align:right}
+      .cot-print-table td{padding:12px 0;border-bottom:1px solid #f2f2f2;vertical-align:top;font-size:14px}
+      .cot-print-prod-name{font-weight:600}
+      .cot-print-prod-sku{font-size:12px;color:#7A756B;font-weight:400;margin-top:2px}
+      .cot-print-totals{display:flex;flex-direction:column;align-items:flex-end;gap:4px;margin-top:6px}
+      .cot-print-row{display:flex;justify-content:space-between;gap:24px;font-size:13px;color:#7A756B;min-width:220px}
+      .cot-print-total-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#7A756B;margin-top:10px}
+      .cot-print-total-value{font-size:34px;font-weight:800;color:#221F1A}
+      .cot-print-abono{margin-top:18px;padding-top:14px;border-top:1px solid #eee}
+      .cot-print-abono-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;font-size:14px}
+      .cot-print-abono-row .lbl{color:#8A3A5B;font-weight:700}
+      .cot-print-abono-row .val{font-weight:700}
+      .cot-print-notas{margin-top:16px;font-size:13px;color:#7A756B;white-space:pre-wrap}
+      .cot-print-footer{margin-top:28px;text-align:center;font-size:11px;color:#7A756B}
+      @page{margin:14mm}
+    `;
+    const w=window.open('','_blank','width=800,height=900');
+    if(!w){alert('Habilita las ventanas emergentes en tu navegador para poder imprimir la cotización.');return;}
+    w.document.open();
+    w.document.write('<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><title>Cotización</title><style>'+printCSS+'</style></head><body>'+printHTML+'</body></html>');
+    w.document.close();
+    const doPrint=()=>{
+      try{w.focus();w.print();}catch(e){}
+    };
+    if(w.document.readyState==='complete')setTimeout(doPrint,50);
+    else w.onload=()=>setTimeout(doPrint,50);
+    w.onafterprint=()=>{try{w.close();}catch(e){}};
   });
   $('cot_new')?.addEventListener('click',()=>{
     if(items.length||(clienteNombre&&clienteNombre.value)){
